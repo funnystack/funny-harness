@@ -1,0 +1,13 @@
+{
+  "name": "funny-harness",
+  "version": "1.1.0",
+  "description": "Makes a repo agent-ready: AGENTS.md, boundary tests, CI pipeline, GC scripts — based on OpenAI's harness engineering methodology",
+  "author": {
+    "name": "funny2048",
+    "url": "https://github.com/funny2048/funny-harness.git"
+  },
+  "repository": "https://github.com/funny2048/funny-harness.git",
+  "license": "MIT",
+  "keywords": ["agent", "scaffold", "ci", "boundary-tests", "architecture", "harness-engineering"],
+  "skills": "./skills/"
+}

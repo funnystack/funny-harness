@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funny.harness.dao.mapper.MetricsAlertMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.funny.harness.dao.entity.MetricsAlertDO">
+        <id column="id" property="id" />
+        <result column="alert_type" property="alertType" />
+        <result column="severity" property="severity" />
+        <result column="trace_id" property="traceId" />
+        <result column="details" property="details" />
+        <result column="notified" property="notified" />
+        <result column="created_stime" property="createdStime" />
+        <result column="modified_stime" property="modifiedStime" />
+        <result column="is_del" property="isDel" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, alert_type, severity, trace_id, details, notified, created_stime, modified_stime, is_del
+    </sql>
+
+    <!-- 按条件查询告警 -->
+    <select id="queryAlerts" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM metrics_alerts
+        WHERE is_del = 0
+        <if test="type != null and type != ''">
+            AND alert_type = #{type}
+        </if>
+        <if test="severity != null and severity != ''">
+            AND severity = #{severity}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND DATE(created_stime) &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND DATE(created_stime) &lt;= #{endDate}
+        </if>
+        ORDER BY created_stime DESC
+    </select>
+
+</mapper>

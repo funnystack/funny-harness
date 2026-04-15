@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>周报看板 - Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  </head>
+  <body>
+    <script src="/assets/common.js"></script>
+    <script src="/assets/charts.js"></script>
+    <script>
+      // 默认：2026-04-12 所在周（周一 ~ 周日）
+      function getWeekRange(dateStr) {
+        const d = new Date(dateStr);
+        const day = d.getDay();
+        const diff = day === 0 ? -6 : 1 - day; // 周一为起始
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + diff);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        return {
+          start: monday.toISOString().slice(0, 10),
+          end: sunday.toISOString().slice(0, 10),
+          label:
+            monday.toISOString().slice(0, 10) +
+            " ~ " +
+            sunday.toISOString().slice(0, 10),
+        };
+      }
+
+      const DEFAULT_WEEK = getWeekRange("2026-04-12");
+
+      renderPage(
+        "周报看板",
+        "weekly",
+        `
+            <!-- 周范围选择器 -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:#fff;border-radius:8px;padding:12px 20px;">
+                <label style="font-size:13px;color:#606266;font-weight:500;">周范围</label>
+                <input type="date" id="weekStart" value="${DEFAULT_WEEK.start}"
+                       style="padding:6px 12px;border:1px solid #dcdfe6;border-radius:4px;font-size:14px;color:#303133;" />
+                <span style="color:#909399;">~</span>
+                <input type="date" id="weekEnd" value="${DEFAULT_WEEK.end}"
+                       style="padding:6px 12px;border:1px solid #dcdfe6;border-radius:4px;font-size:14px;color:#303133;" />
+                <button onclick="loadData()"
+                        style="padding:6px 20px;background:#409eff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">查询</button>
+                <button onclick="prevWeek()"
+                        style="padding:6px 12px;background:#fff;color:#606266;border:1px solid #dcdfe6;border-radius:4px;cursor:pointer;font-size:13px;">上一周</button>
+                <button onclick="nextWeek()"
+                        style="padding:6px 12px;background:#fff;color:#606266;border:1px solid #dcdfe6;border-radius:4px;cursor:pointer;font-size:13px;">下一周</button>
+            </div>
+
+            <div id="cards" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:20px;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+                <div id="dauTrend" style="height:350px;background:#fff;border-radius:8px;padding:10px;"></div>
+                <div id="capTrend" style="height:350px;background:#fff;border-radius:8px;padding:10px;"></div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:20px;">
+                <h3 style="margin:0 0 10px;font-size:15px;">本周新增用户</h3>
+                <table id="newUserTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead><tr style="background:#f5f7fa;"><th style="padding:8px;text-align:left;">用户</th><th style="padding:8px;">主机名</th><th style="padding:8px;">注册日期</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        `,
+      );
+
+      function prevWeek() {
+        const s = document.getElementById("weekStart");
+        const e = document.getElementById("weekEnd");
+        const d = new Date(s.value);
+        d.setDate(d.getDate() - 7);
+        const range = getWeekRange(d.toISOString().slice(0, 10));
+        s.value = range.start;
+        e.value = range.end;
+        loadData();
+      }
+
+      function nextWeek() {
+        const s = document.getElementById("weekStart");
+        const e = document.getElementById("weekEnd");
+        const d = new Date(s.value);
+        d.setDate(d.getDate() + 7);
+        const range = getWeekRange(d.toISOString().slice(0, 10));
+        s.value = range.start;
+        e.value = range.end;
+        loadData();
+      }
+
+      async function loadData() {
+        try {
+          const start = document.getElementById("weekStart").value;
+          const end = document.getElementById("weekEnd").value;
+          const res = await http.get(
+            "/weekly?startDate=" + start + "&endDate=" + end,
+          );
+          const data = res.data.data || res.data;
+          renderCards(data.summary || {});
+          renderDauTrend(data.dauTrend || []);
+          renderCapTrend(data.capabilityTrend || []);
+          renderNewUsers(data.newUsers || []);
+        } catch (e) {
+          console.error("加载周报数据失败", e);
+        }
+      }
+
+      function renderCards(s) {
+        const cards = [
+          {
+            label: "总 DAU",
+            value: formatNumber(s.totalDau),
+            color: "#409eff",
+          },
+          {
+            label: "总会话",
+            value: formatNumber(s.totalSessions),
+            color: "#67c23a",
+          },
+          {
+            label: "总 Token",
+            value: formatNumber(s.totalTokens),
+            color: "#e6a23c",
+          },
+          {
+            label: "Agent 完成",
+            value: formatNumber(s.agentTasksCompleted),
+            color: "#909399",
+          },
+          {
+            label: "Agent 失败",
+            value: formatNumber(s.agentTasksFailed),
+            color: "#f56c6c",
+          },
+        ];
+        document.getElementById("cards").innerHTML = cards
+          .map(
+            (c) => `
+                <div style="background:#fff;border-radius:8px;padding:20px;border-left:4px solid ${c.color};">
+                    <div style="color:#909399;font-size:13px;">${c.label}</div>
+                    <div style="font-size:28px;font-weight:bold;color:#303133;margin-top:8px;">${c.value}</div>
+                </div>
+            `,
+          )
+          .join("");
+      }
+
+      function renderDauTrend(data) {
+        if (data.length === 0) return;
+        renderLineChart("dauTrend", "DAU 趋势", data, "date", "dau", {
+          yName: "DAU",
+          color: "#409eff",
+        });
+      }
+
+      function renderCapTrend(data) {
+        if (data.length === 0) return;
+        const types = [...new Set(data.map((d) => d.name || d.type))];
+        const seriesConfig = types.map((t) => ({
+          name: t,
+          groupField: "name",
+          groupValue: t,
+          yField: "count",
+        }));
+        renderMultiLineChart(
+          "capTrend",
+          "能力调用趋势",
+          data,
+          "date",
+          seriesConfig,
+        );
+      }
+
+      function renderNewUsers(data) {
+        const tbody = document.querySelector("#newUserTable tbody");
+        tbody.innerHTML = data
+          .map(
+            (u) => `
+                <tr style="border-bottom:1px solid #ebeef5;">
+                    <td style="padding:8px;">
+                      <div style="font-weight:500;">${u.username || u.userId || "-"}</div>
+                    </td>
+                    <td style="padding:8px;text-align:center;">${u.hostname || "-"}</td>
+                    <td style="padding:8px;text-align:center;">${formatDate(u.registerDate)}</td>
+                </tr>
+            `,
+          )
+          .join("");
+      }
+
+      loadData();
+    </script>
+  </body>
+</html>

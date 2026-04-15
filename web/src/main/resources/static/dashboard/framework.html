@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>三层指标体系 - Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+      .layer-section {
+        background: #fff;
+        border-radius: 12px;
+        padding: 0;
+        margin-bottom: 0;
+        overflow: hidden;
+      }
+
+      /* ===== 顶部金字塔区域 ===== */
+      .pyramid-area {
+        background: linear-gradient(
+          180deg,
+          #0f1b3d 0%,
+          #162447 50%,
+          #1a3060 100%
+        );
+        padding: 40px 40px 30px;
+        text-align: center;
+        position: relative;
+      }
+      .pyramid-title {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 13px;
+        letter-spacing: 4px;
+        margin-bottom: 30px;
+      }
+
+      /* 金字塔容器 */
+      .pyramid-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        max-width: 700px;
+        margin: 0 auto;
+        position: relative;
+      }
+      .pyramid-layer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+        border-radius: 6px;
+      }
+      .pyramid-layer:hover {
+        transform: scale(1.02);
+        filter: brightness(1.15);
+      }
+
+      /* 北极星层 */
+      .layer-north {
+        width: 320px;
+        height: 70px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 6px 6px 0 0;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .layer-north .layer-icon {
+        font-size: 18px;
+      }
+      .layer-north .layer-name {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .layer-north .layer-sub {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      /* 连接线 */
+      .connector {
+        width: 2px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.25);
+        position: relative;
+      }
+      .connector::after {
+        content: "";
+        position: absolute;
+        bottom: -4px;
+        left: -3px;
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid rgba(255, 255, 255, 0.4);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.4);
+        transform: rotate(45deg);
+      }
+      .connector-label {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.4);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      /* 围栏层 */
+      .layer-guard {
+        width: 520px;
+        height: 70px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        flex-direction: column;
+        gap: 2px;
+      }
+      .layer-guard .layer-icon {
+        font-size: 18px;
+      }
+      .layer-guard .layer-name {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .layer-guard .layer-sub {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      /* 群星层 */
+      .layer-cluster {
+        width: 700px;
+        height: 70px;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border-radius: 0 0 6px 6px;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .layer-cluster .layer-icon {
+        font-size: 18px;
+      }
+      .layer-cluster .layer-name {
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .layer-cluster .layer-sub {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      /* 右侧注释 */
+      .pyramid-annotations {
+        position: absolute;
+        right: -220px;
+        top: 0;
+        width: 200px;
+        text-align: left;
+      }
+      .anno-item {
+        position: absolute;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 11px;
+        line-height: 1.5;
+        border-left: 2px solid;
+        padding-left: 10px;
+      }
+      .anno-item.anno-1 {
+        top: 10px;
+        border-color: #764ba2;
+      }
+      .anno-item.anno-2 {
+        top: 108px;
+        border-color: #f5576c;
+      }
+      .anno-item.anno-3 {
+        top: 206px;
+        border-color: #00f2fe;
+      }
+
+      /* ===== 指标详情区域 ===== */
+      .detail-area {
+        padding: 30px 40px;
+      }
+      .detail-block {
+        margin-bottom: 30px;
+        border-left: 4px solid;
+        padding-left: 20px;
+      }
+      .detail-block:last-child {
+        margin-bottom: 0;
+      }
+
+      .detail-block h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .detail-block .desc {
+        font-size: 13px;
+        color: #909399;
+        margin-bottom: 16px;
+        line-height: 1.6;
+      }
+      .detail-block .question {
+        font-size: 12px;
+        color: #c0c4cc;
+        font-style: italic;
+        margin-bottom: 16px;
+      }
+
+      /* 北极星详情 */
+      .block-north {
+        border-color: #764ba2;
+      }
+      .block-north h3 {
+        color: #764ba2;
+      }
+
+      /* 围栏详情 */
+      .block-guard {
+        border-color: #f5576c;
+      }
+      .block-guard h3 {
+        color: #f5576c;
+      }
+
+      /* 群星详情 */
+      .block-cluster {
+        border-color: #00b4d8;
+      }
+      .block-cluster h3 {
+        color: #00b4d8;
+      }
+
+      /* 指标卡片 */
+      .metric-cards {
+        display: grid;
+        gap: 12px;
+      }
+      .metric-card {
+        background: #fafbfc;
+        border-radius: 8px;
+        padding: 16px;
+        border: 1px solid #ebeef5;
+      }
+      .metric-card .mc-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #303133;
+        margin-bottom: 6px;
+      }
+      .metric-card .mc-def {
+        font-size: 12px;
+        color: #606266;
+        line-height: 1.6;
+      }
+      .metric-card .mc-tag {
+        display: inline-block;
+        font-size: 11px;
+        padding: 1px 8px;
+        border-radius: 10px;
+        margin-top: 8px;
+      }
+      .tag-phase1 {
+        background: #ecf5ff;
+        color: #409eff;
+      }
+      .tag-phase2 {
+        background: #f0f9eb;
+        color: #67c23a;
+      }
+
+      /* 围栏表格 */
+      .guard-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .guard-table th {
+        background: #fafbfc;
+        text-align: left;
+        padding: 10px 12px;
+        color: #909399;
+        font-weight: 500;
+        border-bottom: 2px solid #ebeef5;
+      }
+      .guard-table td {
+        padding: 12px;
+        border-bottom: 1px solid #ebeef5;
+        color: #303133;
+        vertical-align: top;
+      }
+      .guard-table tr:last-child td {
+        border-bottom: none;
+      }
+      .guard-table .metric-name {
+        font-weight: 500;
+        color: #303133;
+      }
+
+      /* 群星维度网格 */
+      .dim-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+      }
+      .dim-card {
+        background: #fafbfc;
+        border-radius: 10px;
+        padding: 20px 16px;
+        border: 1px solid #ebeef5;
+        text-align: center;
+        transition: all 0.2s;
+      }
+      .dim-card:hover {
+        border-color: #00b4d8;
+        box-shadow: 0 2px 12px rgba(0, 180, 216, 0.1);
+      }
+      .dim-card .dim-icon {
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+      .dim-card .dim-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #303133;
+        margin-bottom: 10px;
+      }
+      .dim-card .dim-metrics {
+        text-align: left;
+      }
+      .dim-card .dim-metric-item {
+        font-size: 12px;
+        color: #606266;
+        padding: 3px 0;
+        border-bottom: 1px dashed #f0f0f0;
+      }
+      .dim-card .dim-metric-item:last-child {
+        border-bottom: none;
+      }
+
+      /* 阶段演进 */
+      .phase-box {
+        background: #fafbfc;
+        border-radius: 10px;
+        padding: 20px;
+        border: 1px solid #ebeef5;
+        display: grid;
+        grid-template-columns: 1fr 60px 1fr;
+        gap: 0;
+        align-items: center;
+      }
+      .phase-item {
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+      }
+      .phase-1 {
+        background: linear-gradient(135deg, #e8ecf8 0%, #d5ddef 100%);
+      }
+      .phase-2 {
+        background: linear-gradient(135deg, #d5f5e3 0%, #b8e6cc 100%);
+      }
+      .phase-item .phase-label {
+        font-size: 11px;
+        color: #909399;
+        margin-bottom: 6px;
+      }
+      .phase-item .phase-metric {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .phase-item .phase-desc {
+        font-size: 12px;
+        color: #606266;
+        line-height: 1.5;
+      }
+      .phase-1 .phase-metric {
+        color: #764ba2;
+      }
+      .phase-2 .phase-metric {
+        color: #27ae60;
+      }
+      .phase-arrow {
+        text-align: center;
+        font-size: 24px;
+        color: #c0c4cc;
+      }
+
+      /* 使用方式说明 */
+      .usage-box {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .usage-item {
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+      }
+      .usage-north {
+        background: linear-gradient(
+          135deg,
+          rgba(118, 75, 162, 0.08),
+          rgba(102, 126, 234, 0.08)
+        );
+        border: 1px solid rgba(118, 75, 162, 0.15);
+      }
+      .usage-guard {
+        background: linear-gradient(
+          135deg,
+          rgba(245, 87, 108, 0.08),
+          rgba(240, 147, 251, 0.08)
+        );
+        border: 1px solid rgba(245, 87, 108, 0.15);
+      }
+      .usage-cluster {
+        background: linear-gradient(
+          135deg,
+          rgba(0, 180, 216, 0.08),
+          rgba(79, 172, 254, 0.08)
+        );
+        border: 1px solid rgba(0, 180, 216, 0.15);
+      }
+      .usage-item .u-title {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .usage-north .u-title {
+        color: #764ba2;
+      }
+      .usage-guard .u-title {
+        color: #f5576c;
+      }
+      .usage-cluster .u-title {
+        color: #00b4d8;
+      }
+      .usage-item .u-text {
+        font-size: 12px;
+        color: #606266;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="/assets/common.js"></script>
+    <script>
+      renderPage(
+        "三层指标体系",
+        "framework",
+        `
+        <!-- 金字塔图 -->
+        <div class="pyramid-area">
+          <div class="pyramid-title">METRICS FRAMEWORK — 三层指标体系</div>
+          <div class="pyramid-stack" style="position:relative;">
+            <!-- 北极星 -->
+            <div class="pyramid-layer layer-north" onclick="scrollTo('detail-north')">
+              <div class="layer-icon">★</div>
+              <div class="layer-name">北极星指标 · North Star</div>
+              <div class="layer-sub">1 个 · 定方向 · 全组织对齐</div>
+            </div>
+
+            <!-- 连接线 1 -->
+            <div class="connector"><div class="connector-label">回答："我们到底在优化什么"</div></div>
+
+            <!-- 围栏 -->
+            <div class="pyramid-layer layer-guard" onclick="scrollTo('detail-guard')">
+              <div class="layer-icon">⊞</div>
+              <div class="layer-name">围栏指标 · Guardrail</div>
+              <div class="layer-sub">3~5 个 · 保底线 · 触发告警</div>
+            </div>
+
+            <!-- 连接线 2 -->
+            <div class="connector"><div class="connector-label">回答："什么情况必须立刻干预"</div></div>
+
+            <!-- 群星 -->
+            <div class="pyramid-layer layer-cluster" onclick="scrollTo('detail-cluster')">
+              <div class="layer-icon">✦</div>
+              <div class="layer-name">群星指标 · Cluster</div>
+              <div class="layer-sub">多维度 · 找机会 · 日常观察</div>
+            </div>
+
+            <!-- 右侧注释 -->
+            <div class="pyramid-annotations">
+              <div class="anno-item anno-1">
+                <strong style="color:rgba(255,255,255,0.7);">服务对象：</strong>管理层 / 全组织<br/>
+                用来回答"方向对不对"
+              </div>
+              <div class="anno-item anno-2">
+                <strong style="color:rgba(255,255,255,0.7);">服务对象：</strong>技术负责人<br/>
+                用来回答"是否需要立刻干预"
+              </div>
+              <div class="anno-item anno-3">
+                <strong style="color:rgba(255,255,255,0.7);">服务对象：</strong>一线团队<br/>
+                用来回答"哪里可以做得更好"
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 详情区域 -->
+        <div class="detail-area">
+
+          <!-- ===== 北极星指标 ===== -->
+          <div id="detail-north" class="detail-block block-north">
+            <h3>★ 北极星指标 — 唯一的核心方向</h3>
+            <div class="desc">
+              北极星指标只有一个作用——让整个团队对齐"我们到底在追求什么"。它不是 KPI，不是考核目标，而是<strong>方向锚点</strong>。分两个阶段演进：
+            </div>
+            <div class="phase-box">
+              <div class="phase-item phase-1">
+                <div class="phase-label">PHASE 1 · 人机协作阶段</div>
+                <div class="phase-metric">AI 辅助 Story 点数占比</div>
+                <div class="phase-desc">
+                  一个迭代周期内，使用 AI 工具辅助完成的<br/>
+                  Story 点数占总 Story 点数的比例
+                </div>
+              </div>
+              <div class="phase-arrow">→</div>
+              <div class="phase-item phase-2">
+                <div class="phase-label">PHASE 2 · Agent 自主阶段</div>
+                <div class="phase-metric">有效交付吞吐量</div>
+                <div class="phase-desc">
+                  单位时间内通过 AI 辅助完成并成功上线的<br/>
+                  功能数量，归一化为人均月有效交付数
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="metric-card">
+                <div class="mc-name">辅助指标 ① — 活跃使用覆盖率</div>
+                <div class="mc-def">近 30 天使用 ≥3 次的人数占比，判断工具推广是否到位</div>
+                <div class="mc-tag tag-phase1">Phase 1</div>
+              </div>
+              <div class="metric-card">
+                <div class="mc-name">辅助指标 ② — 使用深度得分</div>
+                <div class="mc-def">加权评分：Edit 占比高加分、纯 Read 占比减分、日均时长低于 30 分钟减分</div>
+                <div class="mc-tag tag-phase1">Phase 1</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 围栏指标 ===== -->
+          <div id="detail-guard" class="detail-block block-guard">
+            <h3>⊞ 围栏指标 — 不可逾越的红线</h3>
+            <div class="desc">
+              数量要少（3~5 个），作用是<strong>一旦触发，必须立刻干预</strong>。阈值不拍脑袋——基于 14 天滑动窗口基线动态计算。
+            </div>
+            <div class="question">围栏指标的关键不是给一个固定数字，而是定义清楚"什么是异常"和"异常了怎么办"。</div>
+            <table class="guard-table">
+              <thead>
+                <tr>
+                  <th style="width:140px;">围栏指标</th>
+                  <th style="width:200px;">定义要点</th>
+                  <th style="width:160px;">参考区间</th>
+                  <th>触发后的处理动作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="metric-name">单任务 Token 消耗</td>
+                  <td>按任务类型分别统计基线，而非混合计算</td>
+                  <td>超过该类型基线的 3~5 倍</td>
+                  <td>即时通知负责人，检查 Trace</td>
+                </tr>
+                <tr>
+                  <td class="metric-name">月度 Token 预算</td>
+                  <td>预算使用率 = 已消耗 / 月度预算</td>
+                  <td>&gt; 85% 预警，&gt; 95% 熔断</td>
+                  <td>85% 通知管理员，95% 限制非核心调用</td>
+                </tr>
+                <tr>
+                  <td class="metric-name">修正循环次数</td>
+                  <td>一次任务中 Agent 被打回重做的累计次数</td>
+                  <td>连续超过 N 次（建议 N=3）</td>
+                  <td>强制中止任务，升级人工处理</td>
+                </tr>
+                <tr>
+                  <td class="metric-name">安全违规</td>
+                  <td>Agent 生成的代码触发安全扫描告警</td>
+                  <td>任何安全告警</td>
+                  <td>零容忍——即时通知，阻塞后续流程</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ===== 群星指标 ===== -->
+          <div id="detail-cluster" class="detail-block block-cluster">
+            <h3>✦ 群星指标 — 日常观察的信号塔</h3>
+            <div class="desc">
+              数量多、粒度细，价值不在于单个指标的绝对值，而在于<strong>模式识别和异常发现</strong>。平时不用盯，定期（周/月）回顾，关注变化趋势而非绝对数值。
+            </div>
+            <div class="question">回答："哪里可以做得更好"</div>
+            <div class="dim-grid">
+              <div class="dim-card">
+                <div class="dim-icon">📊</div>
+                <div class="dim-name">使用渗透</div>
+                <div class="dim-metrics">
+                  <div class="dim-metric-item">DAU（日活跃用户）</div>
+                  <div class="dim-metric-item">安装覆盖率</div>
+                  <div class="dim-metric-item">项目覆盖率</div>
+                  <div class="dim-metric-item">人均日时长</div>
+                </div>
+              </div>
+              <div class="dim-card">
+                <div class="dim-icon">🔍</div>
+                <div class="dim-name">行为深度</div>
+                <div class="dim-metrics">
+                  <div class="dim-metric-item">工具调用分布</div>
+                  <div class="dim-metric-item">Edit / Read / Bash 占比</div>
+                  <div class="dim-metric-item">会话频次</div>
+                </div>
+              </div>
+              <div class="dim-card">
+                <div class="dim-icon">⚡</div>
+                <div class="dim-name">能力使用</div>
+                <div class="dim-metrics">
+                  <div class="dim-metric-item">Skill 调用热度</div>
+                  <div class="dim-metric-item">Agent 分布</div>
+                  <div class="dim-metric-item">命令执行频率</div>
+                  <div class="dim-metric-item">自定义 Slash Command 排行</div>
+                </div>
+              </div>
+              <div class="dim-card">
+                <div class="dim-icon">⏱</div>
+                <div class="dim-name">效率信号</div>
+                <div class="dim-metrics">
+                  <div class="dim-metric-item">一次通过率</div>
+                  <div class="dim-metric-item">平均单任务耗时</div>
+                  <div class="dim-metric-item">修正循环平均次数</div>
+                </div>
+              </div>
+              <div class="dim-card">
+                <div class="dim-icon">💰</div>
+                <div class="dim-name">成本结构</div>
+                <div class="dim-metrics">
+                  <div class="dim-metric-item">按任务类型的 Token 分布</div>
+                  <div class="dim-metric-item">人均月成本</div>
+                  <div class="dim-metric-item">单会话成本</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 使用方式 ===== -->
+          <div style="margin-top:10px;">
+            <h3 style="font-size:15px;color:#303133;margin-bottom:16px;">三种指标的使用方式</h3>
+            <div class="usage-box">
+              <div class="usage-item usage-north">
+                <div class="u-title">★ 北极星</div>
+                <div class="u-text">
+                  每周看趋势<br/>
+                  决策时看方向<br/>
+                  <strong>聚焦一个点，不做排名</strong>
+                </div>
+              </div>
+              <div class="usage-item usage-guard">
+                <div class="u-title">⊞ 围栏</div>
+                <div class="u-text">
+                  触发即处理<br/>
+                  宁可误报不可漏报<br/>
+                  <strong>阈值基于滑动窗口基线</strong>
+                </div>
+              </div>
+              <div class="usage-item usage-cluster">
+                <div class="u-title">✦ 群星</div>
+                <div class="u-text">
+                  定期回顾（周/月）<br/>
+                  关注趋势变化<br/>
+                  <strong>不盯绝对值，找模式和异常</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 关系图 ===== -->
+          <div style="margin-top:30px;">
+            <h3 style="font-size:15px;color:#303133;margin-bottom:16px;">指标体系与看板的映射关系</h3>
+            <div id="relationChart" style="height:400px;background:#fff;border-radius:8px;border:1px solid #ebeef5;"></div>
+          </div>
+        </div>
+        `,
+      );
+
+      function scrollTo(id) {
+        document
+          .getElementById(id)
+          .scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      // ===== 指标体系与看板映射关系图 =====
+      (function initRelationChart() {
+        const chart = echarts.init(document.getElementById("relationChart"));
+        chart.setOption({
+          tooltip: {
+            trigger: "item",
+            formatter: function (params) {
+              if (params.dataType === "edge") {
+                return params.data.source + " → " + params.data.target;
+              }
+              return params.name;
+            },
+          },
+          series: [
+            {
+              type: "graph",
+              layout: "none",
+              symbol: "roundRect",
+              symbolSize: [140, 40],
+              roam: false,
+              label: {
+                show: true,
+                fontSize: 12,
+                color: "#fff",
+                fontWeight: 500,
+              },
+              edgeSymbol: ["none", "arrow"],
+              edgeSymbolSize: [4, 10],
+              edgeLabel: { show: false },
+              lineStyle: {
+                color: "#c0c4cc",
+                width: 1.5,
+                curveness: 0,
+              },
+              data: [
+                // 北极星
+                {
+                  name: "北极星指标",
+                  x: 400,
+                  y: 30,
+                  itemStyle: { color: "#764ba2" },
+                },
+                // 辅助指标
+                {
+                  name: "使用覆盖率",
+                  x: 200,
+                  y: 100,
+                  itemStyle: { color: "#9b7ec8" },
+                },
+                {
+                  name: "使用深度得分",
+                  x: 600,
+                  y: 100,
+                  itemStyle: { color: "#9b7ec8" },
+                },
+                // 围栏
+                {
+                  name: "单任务 Token",
+                  x: 100,
+                  y: 200,
+                  itemStyle: { color: "#f5576c" },
+                },
+                {
+                  name: "月度预算",
+                  x: 300,
+                  y: 200,
+                  itemStyle: { color: "#f5576c" },
+                },
+                {
+                  name: "修正循环",
+                  x: 500,
+                  y: 200,
+                  itemStyle: { color: "#f5576c" },
+                },
+                {
+                  name: "安全违规",
+                  x: 700,
+                  y: 200,
+                  itemStyle: { color: "#f5576c" },
+                },
+                // 群星维度
+                {
+                  name: "使用渗透",
+                  x: 80,
+                  y: 310,
+                  itemStyle: { color: "#00b4d8" },
+                },
+                {
+                  name: "行为深度",
+                  x: 260,
+                  y: 310,
+                  itemStyle: { color: "#00b4d8" },
+                },
+                {
+                  name: "能力使用",
+                  x: 440,
+                  y: 310,
+                  itemStyle: { color: "#00b4d8" },
+                },
+                {
+                  name: "效率信号",
+                  x: 620,
+                  y: 310,
+                  itemStyle: { color: "#00b4d8" },
+                },
+                {
+                  name: "成本结构",
+                  x: 800,
+                  y: 310,
+                  itemStyle: { color: "#00b4d8" },
+                },
+                // 看板
+                {
+                  name: "度量总览",
+                  x: 400,
+                  y: 160,
+                  symbolSize: [100, 36],
+                  itemStyle: { color: "#303133" },
+                },
+                {
+                  name: "日报看板",
+                  x: 100,
+                  y: 400,
+                  symbolSize: [100, 36],
+                  itemStyle: { color: "#67c23a" },
+                },
+                {
+                  name: "周报看板",
+                  x: 300,
+                  y: 400,
+                  symbolSize: [100, 36],
+                  itemStyle: { color: "#409eff" },
+                },
+                {
+                  name: "月报看板",
+                  x: 500,
+                  y: 400,
+                  symbolSize: [100, 36],
+                  itemStyle: { color: "#e6a23c" },
+                },
+                {
+                  name: "Agent 运营",
+                  x: 700,
+                  y: 400,
+                  symbolSize: [100, 36],
+                  itemStyle: { color: "#f56c6c" },
+                },
+              ],
+              links: [
+                // 北极星 → 辅助
+                { source: "北极星指标", target: "使用覆盖率" },
+                { source: "北极星指标", target: "使用深度得分" },
+                // 北极星 → 总览
+                {
+                  source: "北极星指标",
+                  target: "度量总览",
+                  lineStyle: { width: 2, color: "#764ba2" },
+                },
+                // 围栏 → 总览
+                {
+                  source: "单任务 Token",
+                  target: "度量总览",
+                  lineStyle: { width: 2, color: "#f5576c" },
+                },
+                {
+                  source: "月度预算",
+                  target: "度量总览",
+                  lineStyle: { width: 2, color: "#f5576c" },
+                },
+                {
+                  source: "修正循环",
+                  target: "度量总览",
+                  lineStyle: { width: 2, color: "#f5576c" },
+                },
+                {
+                  source: "安全违规",
+                  target: "度量总览",
+                  lineStyle: { width: 2, color: "#f5576c" },
+                },
+                // 群星 → 各看板
+                { source: "使用渗透", target: "日报看板" },
+                { source: "行为深度", target: "日报看板" },
+                { source: "使用渗透", target: "周报看板" },
+                { source: "能力使用", target: "周报看板" },
+                { source: "效率信号", target: "周报看板" },
+                { source: "成本结构", target: "月报看板" },
+                { source: "使用渗透", target: "月报看板" },
+                { source: "效率信号", target: "Agent 运营" },
+                { source: "能力使用", target: "Agent 运营" },
+                {
+                  source: "单任务 Token",
+                  target: "Agent 运营",
+                  lineStyle: { type: "dashed" },
+                },
+                {
+                  source: "修正循环",
+                  target: "Agent 运营",
+                  lineStyle: { type: "dashed" },
+                },
+                {
+                  source: "安全违规",
+                  target: "Agent 运营",
+                  lineStyle: { type: "dashed" },
+                },
+              ],
+            },
+          ],
+        });
+        window.addEventListener("resize", () => chart.resize());
+      })();
+    </script>
+  </body>
+</html>

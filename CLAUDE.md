@@ -1,0 +1,3 @@
+# Development Instructions
+
+@AGENTS.md

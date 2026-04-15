@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "name": "funny-harness",
+  "description": "AI Agent Harness 工程基建项目 — 团队环境初始化、项目知识库搭建、变更生命周期管理、自动化验证",
+  "release_date": "2026-04-10",
+  "changelog": {
+    "2.0.0": "重构：新增openspec/harness/skills/agents/templates体系",
+    "1.1.0": "新增：harness-init-java 技能、多语言规则支持",
+    "1.0.0": "初始版本：基础install.sh、hooks、rules"
+  }
+}

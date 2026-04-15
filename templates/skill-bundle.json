@@ -1,0 +1,35 @@
+{
+  "description": "项目默认 Skill 套装清单。install.sh 安装时按此清单批量安装。",
+  "skills": [
+    {
+      "name": "harness-init",
+      "type": "local",
+      "description": "项目初始化主技能"
+    },
+    {
+      "name": "project-init-java",
+      "type": "local",
+      "description": "Java 项目结构分析和 CLAUDE.md 生成"
+    },
+    {
+      "name": "review-summary",
+      "type": "local",
+      "description": "变更审查摘要生成"
+    },
+    {
+      "name": "spring-architecture-review",
+      "type": "local",
+      "description": "Spring Boot 分层架构审查"
+    },
+    {
+      "name": "sql-risk-review",
+      "type": "local",
+      "description": "SQL 风险审查"
+    },
+    {
+      "name": "openspec-bridge",
+      "type": "local",
+      "description": "OpenSpec 配置桥接"
+    }
+  ]
+}

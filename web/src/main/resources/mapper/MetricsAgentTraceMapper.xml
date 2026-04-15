@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funny.harness.dao.mapper.MetricsAgentTraceMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.funny.harness.dao.entity.MetricsAgentTraceDO">
+        <id column="id" property="id" />
+        <result column="trace_id" property="traceId" />
+        <result column="session_id" property="sessionId" />
+        <result column="agent_type" property="agentType" />
+        <result column="task_type" property="taskType" />
+        <result column="task_desc" property="taskDesc" />
+        <result column="status" property="status" />
+        <result column="total_tokens" property="totalTokens" />
+        <result column="total_duration_ms" property="totalDurationMs" />
+        <result column="files_changed" property="filesChanged" />
+        <result column="loop_count" property="loopCount" />
+        <result column="quality_score" property="qualityScore" />
+        <result column="revision_count" property="revisionCount" />
+        <result column="started_at" property="startedAt" />
+        <result column="completed_at" property="completedAt" />
+        <result column="created_stime" property="createdStime" />
+        <result column="modified_stime" property="modifiedStime" />
+        <result column="is_del" property="isDel" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, trace_id, session_id, agent_type, task_type, task_desc, status, total_tokens, total_duration_ms, files_changed, loop_count, quality_score, revision_count, started_at, completed_at, created_stime, modified_stime, is_del
+    </sql>
+
+    <!-- 一次通过率（loop_count=1 的比例） -->
+    <select id="firstPassRate" resultType="java.math.BigDecimal">
+        SELECT ROUND(SUM(CASE WHEN loop_count = 1 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)
+        FROM metrics_agent_traces
+        WHERE DATE(started_at) BETWEEN #{startDate} AND #{endDate} AND status = 'completed' AND is_del = 0
+    </select>
+
+    <!-- 按任务类型统计成本分布 -->
+    <select id="costByTaskType" resultType="java.util.Map">
+        SELECT task_type AS taskType, COUNT(*) AS count, SUM(total_tokens) AS totalTokens,
+               AVG(total_tokens) AS avgTokens
+        FROM metrics_agent_traces
+        WHERE DATE(started_at) BETWEEN #{startDate} AND #{endDate} AND is_del = 0
+        GROUP BY task_type ORDER BY totalTokens DESC
+    </select>
+
+    <!-- 按agent_type聚合利用率 -->
+    <select id="utilizationByAgentType" resultType="java.util.Map">
+        SELECT agent_type AS agentType, COUNT(*) AS taskCount, SUM(total_tokens) AS totalTokens
+        FROM metrics_agent_traces
+        WHERE DATE(started_at) BETWEEN #{startDate} AND #{endDate} AND is_del = 0
+        GROUP BY agent_type ORDER BY taskCount DESC
+    </select>
+
+    <!-- 30天任务完成率趋势 -->
+    <select id="completionRateTrend" resultType="java.util.Map">
+        SELECT DATE(started_at) AS date, COUNT(*) AS total,
+               SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+               SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
+        FROM metrics_agent_traces
+        WHERE DATE(started_at) BETWEEN #{startDate} AND #{endDate} AND is_del = 0
+        GROUP BY date ORDER BY date
+    </select>
+
+</mapper>

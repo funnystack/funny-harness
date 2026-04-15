@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>度量总览 - Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+      /* ===== 指标体系全局样式 ===== */
+      .metric-section {
+        background: #fff;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .metric-section h3 {
+        margin: 0 0 16px;
+        font-size: 15px;
+        color: #303133;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .metric-section h3 .badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        color: #fff;
+        font-weight: normal;
+      }
+
+      /* 北极星 */
+      .north-star {
+        background: linear-gradient(
+          135deg,
+          #1a1a2e 0%,
+          #16213e 50%,
+          #0f3460 100%
+        );
+        color: #fff;
+        text-align: center;
+        padding: 36px 20px;
+        position: relative;
+        overflow: hidden;
+      }
+      .north-star::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(
+          circle,
+          rgba(64, 158, 255, 0.15) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+      .north-star .label {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 4px;
+      }
+      .north-star .value {
+        font-size: 52px;
+        font-weight: bold;
+        margin: 12px 0;
+      }
+      .north-star .sub {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .north-star .trend {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        margin-left: 8px;
+      }
+      .trend-up {
+        background: rgba(103, 194, 58, 0.2);
+        color: #67c23a;
+      }
+      .trend-down {
+        background: rgba(245, 108, 108, 0.2);
+        color: #f56c6c;
+      }
+      .north-star .aux-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+        margin-top: 24px;
+      }
+      .north-star .aux-card {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 16px;
+      }
+      .north-star .aux-card .al {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .north-star .aux-card .av {
+        font-size: 24px;
+        font-weight: bold;
+        margin-top: 6px;
+      }
+
+      /* 围栏指标 */
+      .guardrail-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .guardrail-card {
+        border-radius: 8px;
+        padding: 16px;
+        border-left: 4px solid;
+        background: #fff;
+      }
+      .guardrail-card .gl {
+        font-size: 12px;
+        color: #909399;
+      }
+      .guardrail-card .gv {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 8px 0 4px;
+      }
+      .guardrail-card .gth {
+        font-size: 11px;
+        color: #c0c4cc;
+      }
+      .guardrail-ok {
+        border-color: #67c23a;
+      }
+      .guardrail-ok .gv {
+        color: #67c23a;
+      }
+      .guardrail-warn {
+        border-color: #e6a23c;
+      }
+      .guardrail-warn .gv {
+        color: #e6a23c;
+      }
+      .guardrail-danger {
+        border-color: #f56c6c;
+      }
+      .guardrail-danger .gv {
+        color: #f56c6c;
+      }
+      .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+      .status-dot-ok {
+        background: #67c23a;
+      }
+      .status-dot-warn {
+        background: #e6a23c;
+      }
+
+      /* 群星指标 */
+      .cluster-dim {
+        margin-bottom: 20px;
+      }
+      .cluster-dim h4 {
+        font-size: 14px;
+        color: #303133;
+        margin: 0 0 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #ebeef5;
+      }
+      .cluster-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .cluster-card {
+        background: #fafafa;
+        border-radius: 6px;
+        padding: 14px;
+      }
+      .cluster-card .cl {
+        font-size: 12px;
+        color: #909399;
+      }
+      .cluster-card .cv {
+        font-size: 22px;
+        font-weight: bold;
+        color: #303133;
+        margin: 6px 0;
+      }
+      .cluster-card .cs {
+        font-size: 11px;
+        color: #c0c4cc;
+      }
+
+      /* 维度 tab */
+      .dim-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid #ebeef5;
+        margin-bottom: 20px;
+      }
+      .dim-tab {
+        padding: 10px 20px;
+        font-size: 13px;
+        color: #909399;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s;
+      }
+      .dim-tab:hover {
+        color: #409eff;
+      }
+      .dim-tab.active {
+        color: #409eff;
+        border-bottom-color: #409eff;
+        font-weight: 500;
+      }
+      .dim-panel {
+        display: none;
+      }
+      .dim-panel.active {
+        display: block;
+      }
+
+      /* 月度复盘 */
+      .review-box {
+        background: #fafbfc;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid #ebeef5;
+      }
+      .review-box h4 {
+        margin: 0 0 12px;
+        font-size: 14px;
+        color: #303133;
+      }
+      .review-row {
+        display: flex;
+        padding: 8px 0;
+        border-bottom: 1px dashed #ebeef5;
+        font-size: 13px;
+      }
+      .review-row:last-child {
+        border-bottom: none;
+      }
+      .review-label {
+        color: #909399;
+        width: 160px;
+        flex-shrink: 0;
+      }
+      .review-value {
+        color: #303133;
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="/assets/common.js"></script>
+    <script src="/assets/charts.js"></script>
+    <script>
+      renderPage(
+        "度量总览",
+        "overview",
+        `
+        <!-- 北极星指标 -->
+        <div class="north-star metric-section">
+          <div class="label">北极星指标</div>
+          <div>AI 辅助 Story 点数占比</div>
+          <div class="value">67.3<span style="font-size:20px;font-weight:normal;color:rgba(255,255,255,0.4);">%</span></div>
+          <div class="sub">
+            上月 58.1%
+            <span class="trend trend-up">+9.2%</span>
+          </div>
+          <div class="aux-cards">
+            <div class="aux-card">
+              <div class="al">活跃使用覆盖率</div>
+              <div class="av">78%</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">近 30 天使用 ≥3 次占比</div>
+            </div>
+            <div class="aux-card">
+              <div class="al">使用深度得分</div>
+              <div class="av">7.2<span style="font-size:14px;font-weight:normal;color:rgba(255,255,255,0.4);">/10</span></div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">Edit 占比 38% · 人均 2.4h</div>
+            </div>
+            <div class="aux-card">
+              <div class="al">成本维度 · 人均月 Token 成本</div>
+              <div class="av">¥62.4</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);">上月 ¥58.1 <span style="color:#e6a23c;">+7.4%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 围栏指标 -->
+        <div class="metric-section">
+          <h3><span class="badge" style="background:#f56c6c;">围栏</span> 围栏指标 — 滑动窗口基线（14 天）</h3>
+          <div class="guardrail-grid">
+            <div class="guardrail-card guardrail-ok">
+              <div class="gl"><span class="status-dot status-dot-ok"></span>单任务 Token 消耗</div>
+              <div class="gv">12.8K</div>
+              <div class="gth">基线: 编码类 14 天均值 25.6K · 阈值: &gt; 基线 ×3</div>
+            </div>
+            <div class="guardrail-card guardrail-warn">
+              <div class="gl"><span class="status-dot status-dot-warn"></span>月度 Token 预算使用率</div>
+              <div class="gv">87%</div>
+              <div class="gth">阈值: &gt; 85% 预警 · &gt; 95% 熔断</div>
+            </div>
+            <div class="guardrail-card guardrail-ok">
+              <div class="gl"><span class="status-dot status-dot-ok"></span>修正循环次数</div>
+              <div class="gv">1.8 次</div>
+              <div class="gth">基线: 14 天均值 1.6 次 · 阈值: &gt; 基线 ×2 且 &gt; 3 次</div>
+            </div>
+            <div class="guardrail-card guardrail-ok">
+              <div class="gl"><span class="status-dot status-dot-ok"></span>安全违规次数</div>
+              <div class="gv">0</div>
+              <div class="gth">阈值: &gt; 0 零容忍 — 即时通知，阻塞后续流程</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 群星指标 -->
+        <div class="metric-section">
+          <h3><span class="badge" style="background:#409eff;">群星</span> 群星指标 — 多维度日常观测</h3>
+          <div class="dim-tabs">
+            <div class="dim-tab active" onclick="switchDim(this, 'dim-penetration')">使用渗透</div>
+            <div class="dim-tab" onclick="switchDim(this, 'dim-behavior')">行为深度</div>
+            <div class="dim-tab" onclick="switchDim(this, 'dim-capability')">能力使用</div>
+            <div class="dim-tab" onclick="switchDim(this, 'dim-efficiency')">效率信号</div>
+            <div class="dim-tab" onclick="switchDim(this, 'dim-cost')">成本结构</div>
+          </div>
+
+          <!-- 使用渗透 -->
+          <div id="dim-penetration" class="dim-panel active">
+            <div class="cluster-grid" style="margin-bottom:20px;">
+              <div class="cluster-card"><div class="cl">DAU（日活跃用户）</div><div class="cv">32</div><div class="cs">团队 45 人 · 活跃率 71%</div></div>
+              <div class="cluster-card"><div class="cl">安装覆盖率</div><div class="cv">82%</div><div class="cs">已安装 37 人 / 总 45 人</div></div>
+              <div class="cluster-card"><div class="cl">项目覆盖率</div><div class="cv">68%</div><div class="cs">已接入 11 个 / 总 16 个项目</div></div>
+              <div class="cluster-card"><div class="cl">人均日时长</div><div class="cv">2.4h</div><div class="cs">深度使用 &gt; 2h 达标</div></div>
+              <div class="cluster-card"><div class="cl">人均日 Token</div><div class="cv">18.6K</div><div class="cs">合理区间 10K~30K</div></div>
+              <div class="cluster-card"><div class="cl">7日留存率</div><div class="cv">89%</div><div class="cs">安装后 7 天仍活跃占比</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div id="dauTrendChart" style="height:280px;"></div>
+              <div id="coverageChart" style="height:280px;"></div>
+            </div>
+          </div>
+
+          <!-- 行为深度 -->
+          <div id="dim-behavior" class="dim-panel">
+            <div class="cluster-grid" style="margin-bottom:20px;">
+              <div class="cluster-card"><div class="cl">日均会话数</div><div class="cv">5.2</div><div class="cs">人均每天 5.2 次会话</div></div>
+              <div class="cluster-card"><div class="cl">Edit 占比</div><div class="cv">38%</div><div class="cs">Edit 高=深度融入工作流</div></div>
+              <div class="cluster-card"><div class="cl">Bash 占比</div><div class="cv">22%</div><div class="cs">命令执行频率</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div id="toolDistChart" style="height:280px;"></div>
+              <div id="sessionFreqChart" style="height:280px;"></div>
+            </div>
+          </div>
+
+          <!-- 能力使用 -->
+          <div id="dim-capability" class="dim-panel">
+            <div class="cluster-grid" style="margin-bottom:20px;">
+              <div class="cluster-card"><div class="cl">Skill 调用总量</div><div class="cv">342</div><div class="cs">本月累计</div></div>
+              <div class="cluster-card"><div class="cl">Agent 任务总量</div><div class="cv">156</div><div class="cs">本月累计 · 完成率 89%</div></div>
+              <div class="cluster-card"><div class="cl">自定义命令总量</div><div class="cv">87</div><div class="cs">/deploy /review 等</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div id="skillHeatChart" style="height:300px;"></div>
+              <div id="agentDistChart" style="height:300px;"></div>
+            </div>
+          </div>
+
+          <!-- 效率信号 -->
+          <div id="dim-efficiency" class="dim-panel">
+            <div class="cluster-grid" style="margin-bottom:20px;">
+              <div class="cluster-card"><div class="cl">一次通过率</div><div class="cv">78%</div><div class="cs">Agent 输出无需人工修正</div></div>
+              <div class="cluster-card"><div class="cl">平均单任务耗时</div><div class="cv">4.2 min</div><div class="cs">从开始到完成</div></div>
+              <div class="cluster-card"><div class="cl">修正循环平均次数</div><div class="cv">1.8 次</div><div class="cs">&lt; 3 为正常</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div id="passRateChart" style="height:280px;"></div>
+              <div id="revisionChart" style="height:280px;"></div>
+            </div>
+          </div>
+
+          <!-- 成本结构 -->
+          <div id="dim-cost" class="dim-panel">
+            <div class="cluster-grid" style="margin-bottom:20px;">
+              <div class="cluster-card"><div class="cl">本月总 Token</div><div class="cv">10.2M</div><div class="cs">约 ¥5,100</div></div>
+              <div class="cluster-card"><div class="cl">人均月成本</div><div class="cv">¥62.4</div><div class="cs">团队 45 人</div></div>
+              <div class="cluster-card"><div class="cl">单会话成本</div><div class="cv">¥3.6</div><div class="cs">平均每会话</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+              <div id="costTrendChart" style="height:280px;"></div>
+              <div id="costPieChart" style="height:280px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 月度业务有效性复盘 -->
+        <div class="metric-section">
+          <h3><span class="badge" style="background:#67c23a;">复盘</span> 月度业务有效性复盘 · 2026-03</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <div class="review-box">
+              <h4>北极星指标趋势</h4>
+              <div class="review-row"><div class="review-label">AI 辅助 Story 点数占比</div><div class="review-value">67.3%（上月 58.1%，+9.2%）</div></div>
+              <div class="review-row"><div class="review-label">Bug 密度</div><div class="review-value">2.1 个/千行（上月 2.8，-25%）</div></div>
+              <div class="review-row"><div class="review-label">一次通过率</div><div class="review-value">78%（上月 72%，+6%）</div></div>
+              <div class="review-row"><div class="review-label">人均 Token 成本</div><div class="review-value">¥62.4（上月 ¥58.1，+7.4%）</div></div>
+            </div>
+            <div class="review-box">
+              <h4>归因结论 &amp; 下月行动</h4>
+              <div class="review-row"><div class="review-label">干扰变量</div><div class="review-value">团队规模无变化，3 月架构升级覆盖 15% 模块</div></div>
+              <div class="review-row"><div class="review-label">AI 工具贡献估计</div><div class="review-value">保守估计贡献 10~15 个百分点交付提升</div></div>
+              <div class="review-row"><div class="review-label">置信度</div><div class="review-value"><span style="color:#e6a23c;font-weight:500;">中</span> — 架构升级有部分贡献</div></div>
+              <div class="review-row"><div class="review-label">下月行动</div><div class="review-value">1. 优化 code-review Skill 的 Prompt（一次通过率偏低 55%）<br/>2. Python 团队安装率仅 45%，专项培训<br/>3. 编码 Agent 遗漏场景占比 35%，增加边界条件检查清单</div></div>
+            </div>
+          </div>
+        </div>
+      `,
+      );
+
+      // ===== 维度切换 =====
+      function switchDim(tabEl, panelId) {
+        document
+          .querySelectorAll(".dim-tab")
+          .forEach((t) => t.classList.remove("active"));
+        document
+          .querySelectorAll(".dim-panel")
+          .forEach((p) => p.classList.remove("active"));
+        tabEl.classList.add("active");
+        document.getElementById(panelId).classList.add("active");
+        // 延迟初始化图表（首次切换时）
+        initDimCharts(panelId);
+      }
+
+      // ===== Mock 数据 =====
+      const MOCK = {
+        // 使用渗透 - DAU 趋势（近 14 天）
+        dauTrend: [
+          { date: "03-30", dau: 28 },
+          { date: "03-31", dau: 30 },
+          { date: "04-01", dau: 31 },
+          { date: "04-02", dau: 29 },
+          { date: "04-03", dau: 33 },
+          { date: "04-04", dau: 26 },
+          { date: "04-05", dau: 18 },
+          { date: "04-06", dau: 27 },
+          { date: "04-07", dau: 32 },
+          { date: "04-08", dau: 34 },
+          { date: "04-09", dau: 31 },
+          { date: "04-10", dau: 35 },
+          { date: "04-11", dau: 33 },
+          { date: "04-12", dau: 32 },
+        ],
+        // 使用渗透 - 覆盖率趋势
+        coverageTrend: [
+          { month: "1月", install: 45, project: 38 },
+          { month: "2月", install: 62, project: 50 },
+          { month: "3月", install: 75, project: 62 },
+          { month: "4月", install: 82, project: 68 },
+        ],
+        // 行为深度 - 工具分布
+        toolDist: [
+          { name: "Read", count: 4200 },
+          { name: "Edit", count: 3600 },
+          { name: "Bash", count: 2100 },
+          { name: "Grep", count: 1800 },
+          { name: "Write", count: 900 },
+          { name: "Agent", count: 600 },
+        ],
+        // 行为深度 - 会话频次分布
+        sessionFreq: [
+          { range: "1~3次", users: 8 },
+          { range: "4~6次", users: 14 },
+          { range: "7~10次", users: 12 },
+          { range: "10次+", users: 6 },
+        ],
+        // 能力使用 - Skill 热度
+        skillHeat: [
+          { skill: "code-review", project: "api-gateway", count: 45 },
+          { skill: "code-review", project: "data-pipeline", count: 38 },
+          { skill: "code-review", project: "web-app", count: 32 },
+          { skill: "test-gen", project: "api-gateway", count: 28 },
+          { skill: "test-gen", project: "data-pipeline", count: 22 },
+          { skill: "test-gen", project: "web-app", count: 18 },
+          { skill: "deploy-auto", project: "api-gateway", count: 12 },
+          { skill: "deploy-auto", project: "data-pipeline", count: 8 },
+          { skill: "deploy-auto", project: "web-app", count: 5 },
+          { skill: "security-scan", project: "api-gateway", count: 15 },
+          { skill: "security-scan", project: "data-pipeline", count: 10 },
+          { skill: "security-scan", project: "web-app", count: 7 },
+        ],
+        // 能力使用 - Agent 分布
+        agentDist: [
+          { name: "研发 Agent", value: 68 },
+          { name: "质量 Agent", value: 42 },
+          { name: "安全 Agent", value: 28 },
+          { name: "测试 Agent", value: 18 },
+        ],
+        // 效率 - 一次通过率趋势
+        passRate: [
+          { week: "W9", rate: 62 },
+          { week: "W10", rate: 65 },
+          { week: "W11", rate: 68 },
+          { week: "W12", rate: 72 },
+          { week: "W13", rate: 70 },
+          { week: "W14", rate: 75 },
+          { week: "W15", rate: 78 },
+        ],
+        // 效率 - 修正类型分布
+        revisionType: [
+          { name: "遗漏场景", value: 35 },
+          { name: "逻辑错误", value: 25 },
+          { name: "命名不规范", value: 20 },
+          { name: "架构违规", value: 15 },
+          { name: "其他", value: 5 },
+        ],
+        // 成本 - 月度趋势
+        costTrend: [
+          { month: "1月", tokens: 4200000, yuan: 2100 },
+          { month: "2月", tokens: 6800000, yuan: 3400 },
+          { month: "3月", tokens: 8500000, yuan: 4250 },
+          { month: "4月", tokens: 10200000, yuan: 5100 },
+        ],
+        // 成本 - 按任务类型
+        costByTask: [
+          { name: "编码", value: 2800 },
+          { name: "测试", value: 1200 },
+          { name: "评审", value: 700 },
+          { name: "文档", value: 400 },
+        ],
+      };
+
+      // ===== 图表初始化 =====
+      const initedDims = new Set();
+
+      function initDimCharts(panelId) {
+        if (initedDims.has(panelId)) return;
+        initedDims.add(panelId);
+
+        switch (panelId) {
+          case "dim-penetration":
+            renderDauTrend();
+            renderCoverageTrend();
+            break;
+          case "dim-behavior":
+            renderToolDist();
+            renderSessionFreq();
+            break;
+          case "dim-capability":
+            renderSkillHeat();
+            renderAgentDist();
+            break;
+          case "dim-efficiency":
+            renderPassRate();
+            renderRevisionType();
+            break;
+          case "dim-cost":
+            renderCostTrend();
+            renderCostPie();
+            break;
+        }
+      }
+
+      // 使用渗透
+      function renderDauTrend() {
+        const chart = echarts.init(document.getElementById("dauTrendChart"));
+        chart.setOption({
+          title: {
+            text: "DAU 趋势（近 14 天）",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "axis" },
+          xAxis: { type: "category", data: MOCK.dauTrend.map((d) => d.date) },
+          yAxis: { type: "value", name: "DAU" },
+          series: [
+            {
+              type: "line",
+              data: MOCK.dauTrend.map((d) => d.dau),
+              smooth: true,
+              areaStyle: { opacity: 0.3 },
+              itemStyle: { color: "#409eff" },
+              markLine: {
+                data: [
+                  {
+                    yAxis: 30,
+                    name: "目标线",
+                    lineStyle: { color: "#e6a23c", type: "dashed" },
+                  },
+                ],
+              },
+            },
+          ],
+          grid: { left: "10%", right: "5%", bottom: "15%" },
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      function renderCoverageTrend() {
+        const chart = echarts.init(document.getElementById("coverageChart"));
+        chart.setOption({
+          title: {
+            text: "覆盖率趋势",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "axis" },
+          legend: { data: ["安装覆盖率", "项目覆盖率"], bottom: 0 },
+          xAxis: {
+            type: "category",
+            data: MOCK.coverageTrend.map((d) => d.month),
+          },
+          yAxis: { type: "value", name: "%", max: 100 },
+          series: [
+            {
+              name: "安装覆盖率",
+              type: "bar",
+              data: MOCK.coverageTrend.map((d) => d.install),
+              itemStyle: { color: "#409eff" },
+            },
+            {
+              name: "项目覆盖率",
+              type: "bar",
+              data: MOCK.coverageTrend.map((d) => d.project),
+              itemStyle: { color: "#67c23a" },
+            },
+          ],
+          grid: { left: "10%", right: "5%", bottom: "15%" },
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      // 行为深度
+      function renderToolDist() {
+        const chart = echarts.init(document.getElementById("toolDistChart"));
+        chart.setOption({
+          title: {
+            text: "工具调用分布",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+          series: [
+            {
+              type: "pie",
+              radius: ["40%", "70%"],
+              data: MOCK.toolDist.map((d) => ({
+                name: d.name,
+                value: d.count,
+              })),
+              emphasis: {
+                itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" },
+              },
+            },
+          ],
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      function renderSessionFreq() {
+        const chart = echarts.init(document.getElementById("sessionFreqChart"));
+        chart.setOption({
+          title: {
+            text: "用户日均会话频次分布",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "axis" },
+          xAxis: {
+            type: "category",
+            data: MOCK.sessionFreq.map((d) => d.range),
+          },
+          yAxis: { type: "value", name: "人数" },
+          series: [
+            {
+              type: "bar",
+              data: MOCK.sessionFreq.map((d) => d.users),
+              itemStyle: { color: "#409eff" },
+            },
+          ],
+          grid: { left: "10%", right: "5%", bottom: "15%" },
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      // 能力使用
+      function renderSkillHeat() {
+        renderHeatmapChart(
+          "skillHeatChart",
+          "Skill × 项目 调用热度",
+          MOCK.skillHeat,
+          "project",
+          "skill",
+          "count",
+        );
+      }
+
+      function renderAgentDist() {
+        const chart = echarts.init(document.getElementById("agentDistChart"));
+        chart.setOption({
+          title: {
+            text: "Agent 任务分布",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "item", formatter: "{b}: {c} 个任务 ({d}%)" },
+          series: [
+            {
+              type: "pie",
+              radius: ["40%", "70%"],
+              data: MOCK.agentDist,
+              emphasis: {
+                itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" },
+              },
+            },
+          ],
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      // 效率信号
+      function renderPassRate() {
+        const chart = echarts.init(document.getElementById("passRateChart"));
+        chart.setOption({
+          title: {
+            text: "一次通过率趋势",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "axis" },
+          xAxis: { type: "category", data: MOCK.passRate.map((d) => d.week) },
+          yAxis: { type: "value", name: "%", max: 100 },
+          series: [
+            {
+              type: "line",
+              data: MOCK.passRate.map((d) => d.rate),
+              smooth: true,
+              areaStyle: { opacity: 0.3 },
+              itemStyle: { color: "#67c23a" },
+              markLine: {
+                data: [
+                  {
+                    yAxis: 80,
+                    name: "优秀线",
+                    lineStyle: { color: "#67c23a", type: "dashed" },
+                  },
+                ],
+              },
+            },
+          ],
+          grid: { left: "10%", right: "5%", bottom: "15%" },
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      function renderRevisionType() {
+        const chart = echarts.init(document.getElementById("revisionChart"));
+        chart.setOption({
+          title: {
+            text: "人工修正类型分布",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "item", formatter: "{b}: {c}% ({d}%)" },
+          series: [
+            {
+              type: "pie",
+              radius: ["40%", "70%"],
+              data: MOCK.revisionType,
+              emphasis: {
+                itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" },
+              },
+            },
+          ],
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      // 成本结构
+      function renderCostTrend() {
+        const chart = echarts.init(document.getElementById("costTrendChart"));
+        chart.setOption({
+          title: {
+            text: "月度 Token 消耗趋势",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "axis" },
+          legend: { data: ["Token(万)", "费用(元)"], bottom: 0 },
+          xAxis: { type: "category", data: MOCK.costTrend.map((d) => d.month) },
+          yAxis: [
+            { type: "value", name: "Token(万)" },
+            { type: "value", name: "费用(元)" },
+          ],
+          series: [
+            {
+              name: "Token(万)",
+              type: "bar",
+              data: MOCK.costTrend.map((d) => (d.tokens / 10000).toFixed(0)),
+              itemStyle: { color: "#409eff" },
+            },
+            {
+              name: "费用(元)",
+              type: "line",
+              yAxisIndex: 1,
+              data: MOCK.costTrend.map((d) => d.yuan),
+              smooth: true,
+              itemStyle: { color: "#e6a23c" },
+            },
+          ],
+          grid: { left: "10%", right: "10%", bottom: "15%" },
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      function renderCostPie() {
+        const chart = echarts.init(document.getElementById("costPieChart"));
+        chart.setOption({
+          title: {
+            text: "按任务类型成本分布",
+            left: "center",
+            textStyle: { fontSize: 14 },
+          },
+          tooltip: { trigger: "item", formatter: "{b}: ¥{c} ({d}%)" },
+          series: [
+            {
+              type: "pie",
+              radius: ["40%", "70%"],
+              data: MOCK.costByTask,
+              emphasis: {
+                itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" },
+              },
+            },
+          ],
+        });
+        window.addEventListener("resize", () => chart.resize());
+      }
+
+      // ===== 初始化：默认展示使用渗透维度 =====
+      initDimCharts("dim-penetration");
+    </script>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funny.harness.dao.mapper.MetricsSessionMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.funny.harness.dao.entity.MetricsSessionDO">
+        <id column="id" property="id" />
+        <result column="session_id" property="sessionId" />
+        <result column="user_id" property="userId" />
+        <result column="project_name" property="projectName" />
+        <result column="started_at" property="startedAt" />
+        <result column="ended_at" property="endedAt" />
+        <result column="duration_seconds" property="durationSeconds" />
+        <result column="total_tokens" property="totalTokens" />
+        <result column="tool_read_count" property="toolReadCount" />
+        <result column="tool_edit_count" property="toolEditCount" />
+        <result column="tool_bash_count" property="toolBashCount" />
+        <result column="tool_grep_count" property="toolGrepCount" />
+        <result column="created_stime" property="createdStime" />
+        <result column="modified_stime" property="modifiedStime" />
+        <result column="is_del" property="isDel" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, session_id, user_id, project_name, started_at, ended_at, duration_seconds, total_tokens, tool_read_count, tool_edit_count, tool_bash_count, tool_grep_count, created_stime, modified_stime, is_del
+    </sql>
+
+    <!-- 按小时聚合 Token 消耗（当天） -->
+    <select id="sumTokensByHour" resultType="java.util.Map">
+        SELECT DATE_FORMAT(started_at, '%Y-%m-%d %H:00') AS hour, COALESCE(SUM(total_tokens), 0) AS tokens
+        FROM metrics_sessions
+        WHERE DATE(started_at) = #{date} AND is_del = 0
+        GROUP BY hour ORDER BY hour
+    </select>
+
+    <!-- 按项目聚合 Top N -->
+    <select id="topByProject" resultType="java.util.Map">
+        SELECT project_name AS name, COUNT(*) AS sessions, SUM(total_tokens) AS tokens
+        FROM metrics_sessions
+        WHERE DATE(started_at) = #{date} AND is_del = 0
+        GROUP BY project_name ORDER BY sessions DESC LIMIT #{limit}
+    </select>
+
+    <!-- 按用户聚合排行（关联用户表获取姓名和部门） -->
+    <select id="topByUser" resultType="java.util.Map">
+        SELECT s.user_id AS userId, u.username AS userName, u.team,
+               COUNT(*) AS sessions, SUM(s.total_tokens) AS tokens,
+               AVG(s.duration_seconds) AS avgDuration
+        FROM metrics_sessions s
+        LEFT JOIN metrics_users u ON s.user_id = u.user_id AND u.is_del = 0
+        WHERE DATE(s.started_at) = #{date} AND s.is_del = 0
+        GROUP BY s.user_id, u.username, u.team
+        ORDER BY sessions DESC LIMIT #{limit}
+    </select>
+
+</mapper>

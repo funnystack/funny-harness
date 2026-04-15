@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funny.harness.dao.mapper.MetricsSkillUsageMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.funny.harness.dao.entity.MetricsSkillUsageDO">
+        <id column="id" property="id" />
+        <result column="session_id" property="sessionId" />
+        <result column="user_id" property="userId" />
+        <result column="project_name" property="projectName" />
+        <result column="capability_type" property="capabilityType" />
+        <result column="capability_name" property="capabilityName" />
+        <result column="triggered_at" property="triggeredAt" />
+        <result column="tokens_consumed" property="tokensConsumed" />
+        <result column="duration_ms" property="durationMs" />
+        <result column="result_status" property="resultStatus" />
+        <result column="trace_id" property="traceId" />
+        <result column="created_stime" property="createdStime" />
+        <result column="modified_stime" property="modifiedStime" />
+        <result column="is_del" property="isDel" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, session_id, user_id, project_name, capability_type, capability_name, triggered_at, tokens_consumed, duration_ms, result_status, trace_id, created_stime, modified_stime, is_del
+    </sql>
+
+    <!-- 能力热度排行 -->
+    <select id="capabilityHeatmap" resultType="java.util.Map">
+        SELECT capability_type AS type, capability_name AS name, COUNT(*) AS count
+        FROM metrics_skill_usage
+        WHERE DATE(triggered_at) BETWEEN #{startDate} AND #{endDate} AND is_del = 0
+        GROUP BY capability_type, capability_name ORDER BY count DESC
+    </select>
+
+    <!-- 7天能力调用趋势（按天+能力类型聚合） -->
+    <select id="capabilityTrend" resultType="java.util.Map">
+        SELECT DATE(triggered_at) AS date, capability_type AS type, capability_name AS name, COUNT(*) AS count
+        FROM metrics_skill_usage
+        WHERE DATE(triggered_at) BETWEEN #{startDate} AND #{endDate} AND is_del = 0
+        GROUP BY date, capability_type, capability_name ORDER BY date
+    </select>
+
+    <!-- 统计某时间段内最热 Skill 和调用总数 -->
+    <select id="topSkillAndCount" resultType="java.util.Map">
+        SELECT capability_name AS topSkill, COUNT(*) AS skillCallCount
+        FROM metrics_skill_usage
+        WHERE capability_type = 'skill' AND DATE(triggered_at) BETWEEN #{startDate} AND #{endDate} AND is_del = 0
+        GROUP BY capability_name ORDER BY skillCallCount DESC LIMIT 1
+    </select>
+
+</mapper>

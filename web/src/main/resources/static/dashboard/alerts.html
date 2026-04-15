@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>告警历史 - Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js"></script>
+  </head>
+  <body>
+    <script src="/assets/common.js"></script>
+    <script>
+      renderPage(
+        "告警历史",
+        "alerts",
+        `
+            <div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;display:flex;gap:12px;align-items:center;">
+                <select id="filterType" style="padding:8px;border:1px solid #dcdfe6;border-radius:4px;">
+                    <option value="">全部类型</option>
+                    <option value="TOKEN_OVERUSE">TOKEN_OVERUSE</option>
+                    <option value="LOOP_EXCEEDED">LOOP_EXCEEDED</option>
+                    <option value="DAU_DROP">DAU_DROP</option>
+                    <option value="FAILURE_RATE">FAILURE_RATE</option>
+                    <option value="AGENT_STUCK">AGENT_STUCK</option>
+                </select>
+                <select id="filterSeverity" style="padding:8px;border:1px solid #dcdfe6;border-radius:4px;">
+                    <option value="">全部级别</option>
+                    <option value="critical">Critical</option>
+                    <option value="warning">Warning</option>
+                    <option value="info">Info</option>
+                </select>
+                <button onclick="loadData()" style="padding:8px 20px;background:#409eff;color:#fff;border:none;border-radius:4px;cursor:pointer;">查询</button>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:20px;">
+                <table id="alertTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead><tr style="background:#f5f7fa;">
+                        <th style="padding:10px;text-align:left;">时间</th>
+                        <th style="padding:10px;text-align:left;">类型</th>
+                        <th style="padding:10px;">级别</th>
+                        <th style="padding:10px;">详情</th>
+                        <th style="padding:10px;">状态</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        `,
+      );
+
+      async function loadData() {
+        const type = document.getElementById("filterType").value;
+        const severity = document.getElementById("filterSeverity").value;
+        const params = new URLSearchParams();
+        if (type) params.set("type", type);
+        if (severity) params.set("severity", severity);
+
+        try {
+          const res = await http.get(`/alerts?${params.toString()}`);
+          const data = res.data.data || res.data;
+          renderTable(data);
+        } catch (e) {
+          console.error("加载告警数据失败", e);
+        }
+      }
+
+      function renderTable(data) {
+        const tbody = document.querySelector("#alertTable tbody");
+        if (!data || data.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" style="text-align:center;padding:40px;color:#c0c4cc;">暂无告警记录</td></tr>';
+          return;
+        }
+
+        const severityColors = {
+          critical: "#f56c6c",
+          warning: "#e6a23c",
+          info: "#909399",
+        };
+        tbody.innerHTML = data
+          .map(
+            (a) => `
+                <tr style="border-bottom:1px solid #ebeef5;">
+                    <td style="padding:10px;">${a.createdStime ? a.createdStime.replace("T", " ").substring(0, 19) : "-"}</td>
+                    <td style="padding:10px;">${a.alertType || "-"}</td>
+                    <td style="padding:10px;text-align:center;">
+                        <span style="background:${severityColors[a.severity] || "#909399"};color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;">${a.severity || "-"}</span>
+                    </td>
+                    <td style="padding:10px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${a.details || ""}">${a.details || "-"}</td>
+                    <td style="padding:10px;text-align:center;">${a.notified === 1 ? "已通知" : "未通知"}</td>
+                </tr>
+            `,
+          )
+          .join("");
+      }
+
+      // 初始加载
+      loadData();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>整体架构 - Metrics Dashboard</title>
+    <style>
+      /* ===== 架构图全局 ===== */
+      .arch-section {
+        background: #fff;
+        border-radius: 8px;
+        padding: 24px;
+        margin-bottom: 20px;
+      }
+      .arch-section h3 {
+        margin: 0 0 20px;
+        font-size: 15px;
+        color: #303133;
+      }
+
+      /* 架构区域 */
+      .arch-zone {
+        border: 2px dashed #dcdfe6;
+        border-radius: 12px;
+        padding: 20px;
+        position: relative;
+        margin-bottom: 16px;
+      }
+      .arch-zone-label {
+        position: absolute;
+        top: -12px;
+        left: 20px;
+        background: #fff;
+        padding: 2px 12px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #606266;
+        border-radius: 4px;
+      }
+
+      /* 节点 */
+      .arch-node {
+        background: #fff;
+        border: 2px solid #dcdfe6;
+        border-radius: 8px;
+        padding: 14px 18px;
+        text-align: center;
+        position: relative;
+        transition: all 0.2s;
+        min-width: 140px;
+      }
+      .arch-node:hover {
+        border-color: #409eff;
+        box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
+      }
+      .arch-node .node-icon {
+        font-size: 24px;
+        margin-bottom: 6px;
+      }
+      .arch-node .node-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 4px;
+      }
+      .arch-node .node-desc {
+        font-size: 11px;
+        color: #909399;
+        line-height: 1.5;
+      }
+
+      /* 节点颜色 */
+      .node-blue {
+        border-color: #409eff;
+        background: linear-gradient(135deg, #ecf5ff 0%, #fff 100%);
+      }
+      .node-green {
+        border-color: #67c23a;
+        background: linear-gradient(135deg, #f0f9eb 0%, #fff 100%);
+      }
+      .node-orange {
+        border-color: #e6a23c;
+        background: linear-gradient(135deg, #fdf6ec 0%, #fff 100%);
+      }
+      .node-purple {
+        border-color: #9b59b6;
+        background: linear-gradient(135deg, #f5f0ff 0%, #fff 100%);
+      }
+      .node-red {
+        border-color: #f56c6c;
+        background: linear-gradient(135deg, #fef0f0 0%, #fff 100%);
+      }
+
+      /* 流程箭头 */
+      .flow-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin: 12px 0;
+        flex-wrap: wrap;
+      }
+      .flow-arrow {
+        color: #c0c4cc;
+        font-size: 20px;
+        font-weight: bold;
+        flex-shrink: 0;
+      }
+      .flow-arrow-down {
+        text-align: center;
+        color: #c0c4cc;
+        font-size: 20px;
+        font-weight: bold;
+        margin: 8px 0;
+      }
+
+      /* 数据流标签 */
+      .flow-label {
+        font-size: 11px;
+        color: #909399;
+        text-align: center;
+        margin-top: -4px;
+      }
+
+      /* 表格 */
+      .arch-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .arch-table th {
+        background: #fafafa;
+        padding: 10px 14px;
+        text-align: left;
+        font-weight: 500;
+        color: #606266;
+        border-bottom: 2px solid #ebeef5;
+      }
+      .arch-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #ebeef5;
+        color: #303133;
+      }
+      .arch-table tr:hover td {
+        background: #f5f7fa;
+      }
+
+      /* 标签 */
+      .tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .tag-blue {
+        background: #ecf5ff;
+        color: #409eff;
+      }
+      .tag-green {
+        background: #f0f9eb;
+        color: #67c23a;
+      }
+      .tag-orange {
+        background: #fdf6ec;
+        color: #e6a23c;
+      }
+      .tag-purple {
+        background: #f5f0ff;
+        color: #9b59b6;
+      }
+      .tag-red {
+        background: #fef0f0;
+        color: #f56c6c;
+      }
+
+      /* 数据库表结构 */
+      .db-card {
+        background: #fafbfc;
+        border: 1px solid #ebeef5;
+        border-radius: 6px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .db-card .db-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .db-card .db-field {
+        font-size: 12px;
+        color: #606266;
+        padding: 2px 0;
+        font-family: monospace;
+      }
+      .db-card .db-field .field-key {
+        color: #e6a23c;
+        font-size: 10px;
+      }
+
+      /* 生命周期时间线 */
+      .lifecycle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+        padding: 20px 0;
+        overflow-x: auto;
+      }
+      .lifecycle-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 100px;
+        text-align: center;
+      }
+      .lifecycle-step .step-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+      .lifecycle-step .step-label {
+        font-size: 12px;
+        color: #303133;
+        font-weight: 500;
+        line-height: 1.4;
+      }
+      .lifecycle-step .step-sub {
+        font-size: 10px;
+        color: #909399;
+        margin-top: 2px;
+      }
+      .lifecycle-connector {
+        width: 40px;
+        height: 2px;
+        background: #dcdfe6;
+        position: relative;
+        flex-shrink: 0;
+        margin-bottom: 40px;
+      }
+      .lifecycle-connector::after {
+        content: "";
+        position: absolute;
+        right: -4px;
+        top: -3px;
+        border: 4px solid transparent;
+        border-left-color: #dcdfe6;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="/assets/common.js"></script>
+    <script>
+      renderPage(
+        "整体架构",
+        "architecture",
+        `
+        <!-- 架构全景 -->
+        <div class="arch-section">
+          <h3>架构全景 — 数据从哪来、怎么传、怎么存、怎么算</h3>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+            <!-- 开发者机器 -->
+            <div class="arch-zone">
+              <div class="arch-zone-label">🖥️ 开发者机器（本地）</div>
+
+              <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:10px;">
+                <div class="arch-node node-blue" style="width:200px;">
+                  <div class="node-icon">⌨️</div>
+                  <div class="node-title">Claude Code</div>
+                  <div class="node-desc">开发者日常交互入口<br/>Agent 自主执行入口</div>
+                </div>
+
+                <div class="flow-arrow-down">↓ Hook 触发</div>
+
+                <div class="arch-node node-green" style="width:200px;">
+                  <div class="node-icon">🪝</div>
+                  <div class="node-title">Hooks 采集层</div>
+                  <div class="node-desc">
+                    <span class="tag tag-blue">SessionStart</span>
+                    <span class="tag tag-green">PreToolUse</span>
+                    <span class="tag tag-orange">Stop</span>
+                    <br/>三个 Hook 协同工作
+                  </div>
+                </div>
+
+                <div class="flow-arrow-down">↓ 写入</div>
+
+                <div class="arch-node" style="width:200px;">
+                  <div class="node-icon">📝</div>
+                  <div class="node-title">本地日志缓冲</div>
+                  <div class="node-desc">JSON Lines 文件<br/>不阻塞开发流程</div>
+                </div>
+
+                <div class="flow-arrow-down">↓ 每 5 分钟</div>
+
+                <div class="arch-node node-orange" style="width:200px;">
+                  <div class="node-icon">⏰</div>
+                  <div class="node-title">Cron 定时上报</div>
+                  <div class="node-desc">批量 HTTPS POST<br/>失败自动重试</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 服务端 -->
+            <div class="arch-zone">
+              <div class="arch-zone-label">☁️ 服务端</div>
+
+              <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:10px;">
+                <div class="arch-node node-purple" style="width:240px;">
+                  <div class="node-icon">🔌</div>
+                  <div class="node-title">收集服务 (Spring Boot)</div>
+                  <div class="node-desc">接收校验 → 去重 → 持久化<br/>异常检测规则引擎</div>
+                </div>
+
+                <div class="flow-arrow-down">↓ 读写</div>
+
+                <div class="arch-node node-red" style="width:240px;">
+                  <div class="node-icon">🗄️</div>
+                  <div class="node-title">MySQL</div>
+                  <div class="node-desc">
+                    <span class="tag tag-blue">users</span>
+                    <span class="tag tag-green">sessions</span>
+                    <span class="tag tag-orange">skill_usage</span>
+                    <br/>
+                    <span class="tag tag-purple">agent_traces</span>
+                    <span class="tag tag-red">daily_summaries</span>
+                  </div>
+                </div>
+
+                <div class="flow-arrow-down">↓ 聚合分析</div>
+
+                <div class="arch-node node-blue" style="width:240px;">
+                  <div class="node-icon">📊</div>
+                  <div class="node-title">分析 & 展示层</div>
+                  <div class="node-desc">
+                    Dashboard API · 日报/周报/月报<br/>
+                    异常告警 · 北极星/围栏/群星
+                  </div>
+                </div>
+
+                <div class="flow-arrow-down">↑ 重试失败</div>
+
+                <div style="font-size:11px;color:#e6a23c;text-align:center;">
+                  ⚠️ 上报失败时本地保留日志，下次 Cron 自动重试
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 中心数据流箭头 -->
+          <div style="position:relative;margin-top:-200px;margin-bottom:180px;pointer-events:none;text-align:center;">
+            <div style="display:inline-block;background:#ecf5ff;border:2px solid #409eff;border-radius:8px;padding:6px 16px;font-size:12px;color:#409eff;font-weight:500;pointer-events:auto;">
+              HTTPS POST（批量 JSON）
+            </div>
+          </div>
+        </div>
+
+        <!-- 数据生命周期 -->
+        <div class="arch-section">
+          <h3>数据生命周期 — 一条数据的完整旅程</h3>
+          <div class="lifecycle">
+            <div class="lifecycle-step">
+              <div class="step-circle" style="background:#ecf5ff;color:#409eff;">1</div>
+              <div class="step-label">Hook 采集</div>
+              <div class="step-sub">事件触发时<br/>自动写入</div>
+            </div>
+            <div class="lifecycle-connector"></div>
+            <div class="lifecycle-step">
+              <div class="step-circle" style="background:#f0f9eb;color:#67c23a;">2</div>
+              <div class="step-label">本地缓冲</div>
+              <div class="step-sub">JSON Lines<br/>追加写入</div>
+            </div>
+            <div class="lifecycle-connector"></div>
+            <div class="lifecycle-step">
+              <div class="step-circle" style="background:#fdf6ec;color:#e6a23c;">3</div>
+              <div class="step-label">定时上报</div>
+              <div class="step-sub">Cron 5min<br/>批量 POST</div>
+            </div>
+            <div class="lifecycle-connector"></div>
+            <div class="lifecycle-step">
+              <div class="step-circle" style="background:#f5f0ff;color:#9b59b6;">4</div>
+              <div class="step-label">接收校验</div>
+              <div class="step-sub">去重 + 格式<br/>校验</div>
+            </div>
+            <div class="lifecycle-connector"></div>
+            <div class="lifecycle-step">
+              <div class="step-circle" style="background:#fef0f0;color:#f56c6c;">5</div>
+              <div class="step-label">MySQL 存储</div>
+              <div class="step-sub">5 张核心表<br/>索引优化</div>
+            </div>
+            <div class="lifecycle-connector"></div>
+            <div class="lifecycle-step">
+              <div class="step-circle" style="background:#ecf5ff;color:#409eff;">6</div>
+              <div class="step-label">分析聚合</div>
+              <div class="step-sub">定时任务<br/>生成汇总</div>
+            </div>
+            <div class="lifecycle-connector"></div>
+            <div class="lifecycle-step">
+              <div class="step-circle" style="background:#f0f9eb;color:#67c23a;">7</div>
+              <div class="step-label">看板展示</div>
+              <div class="step-sub">Dashboard<br/>告警通知</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 采集层详情 -->
+        <div class="arch-section">
+          <h3>采集层 — 三个 Hook 的职责划分</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+            <div class="arch-node node-blue" style="text-align:left;">
+              <div class="node-title" style="color:#409eff;">🪝 SessionStart Hook</div>
+              <div class="node-desc" style="margin-top:8px;">
+                <div style="margin-bottom:6px;"><b>触发时机：</b>会话启动时</div>
+                <div style="margin-bottom:6px;"><b>回答的问题：</b>谁在用？什么时间？哪个项目？</div>
+                <div><b>采集字段：</b></div>
+                <div style="font-family:monospace;font-size:11px;color:#606266;margin-top:4px;">
+                  · username（系统读取）<br/>
+                  · timestamp<br/>
+                  · project_path<br/>
+                  · hostname<br/>
+                  · model（使用模型名称）<br/>
+                  · source（CLI / IDE）
+                </div>
+              </div>
+            </div>
+            <div class="arch-node node-green" style="text-align:left;">
+              <div class="node-title" style="color:#67c23a;">🪝 PreToolUse Hook</div>
+              <div class="node-desc" style="margin-top:8px;">
+                <div style="margin-bottom:6px;"><b>触发时机：</b>每次工具调用</div>
+                <div style="margin-bottom:6px;"><b>回答的问题：</b>用了什么？用得多深？</div>
+                <div><b>采集字段：</b></div>
+                <div style="font-family:monospace;font-size:11px;color:#606266;margin-top:4px;">
+                  · tool_name（Read/Edit/Bash/Grep）<br/>
+                  · tool_input（完整 JSON 参数）<br/>
+                  · command（Bash 工具时提取）<br/>
+                  · <span style="color:#e6a23c;">能力识别：tool_name 含 "skill" 时<br/>　从 tool_input 提取 Skill 名称；<br/>　含 "agent" 时提取 Agent 类型</span>
+                </div>
+              </div>
+            </div>
+            <div class="arch-node node-orange" style="text-align:left;">
+              <div class="node-title" style="color:#e6a23c;">🪝 Stop Hook</div>
+              <div class="node-desc" style="margin-top:8px;">
+                <div style="margin-bottom:6px;"><b>触发时机：</b>会话结束时</div>
+                <div style="margin-bottom:6px;"><b>回答的问题：</b>用了多久？花了多少？</div>
+                <div><b>采集字段：</b></div>
+                <div style="font-family:monospace;font-size:11px;color:#606266;margin-top:4px;">
+                  · duration_seconds<br/>
+                  · total_tokens<br/>
+                  · task_summary（Phase2）<br/>
+                  · files_changed / loops
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 存储层 -->
+        <div class="arch-section">
+          <h3>存储层 — 5 张核心表</h3>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+            <div class="db-card">
+              <div class="db-name"><span class="tag tag-blue">users</span></div>
+              <div class="db-field">user_id <span class="field-key">PK</span></div>
+              <div class="db-field">username</div>
+              <div class="db-field">team</div>
+              <div class="db-field">created_at</div>
+              <div style="font-size:10px;color:#c0c4cc;margin-top:6px;">用户信息，首次上报自动创建</div>
+            </div>
+            <div class="db-card">
+              <div class="db-name"><span class="tag tag-green">sessions</span></div>
+              <div class="db-field">session_id <span class="field-key">PK</span></div>
+              <div class="db-field">user_id</div>
+              <div class="db-field">project_path</div>
+              <div class="db-field">started_at / ended_at</div>
+              <div class="db-field">duration_seconds</div>
+              <div class="db-field">total_tokens</div>
+              <div class="db-field">tool_*_count × 4</div>
+              <div style="font-size:10px;color:#c0c4cc;margin-top:6px;">Phase1 核心，日处理上千次</div>
+            </div>
+            <div class="db-card">
+              <div class="db-name"><span class="tag tag-orange">skill_usage</span></div>
+              <div class="db-field">id <span class="field-key">PK</span></div>
+              <div class="db-field">session_id</div>
+              <div class="db-field">capability_type</div>
+              <div class="db-field">capability_name</div>
+              <div class="db-field">triggered_at</div>
+              <div class="db-field">tokens_consumed</div>
+              <div class="db-field">result_status</div>
+              <div style="font-size:10px;color:#c0c4cc;margin-top:6px;">Skill/Agent/Command 调用</div>
+            </div>
+            <div class="db-card">
+              <div class="db-name"><span class="tag tag-purple">agent_traces</span></div>
+              <div class="db-field">trace_id <span class="field-key">PK</span></div>
+              <div class="db-field">task_type</div>
+              <div class="db-field">steps (JSON)</div>
+              <div class="db-field">task_result</div>
+              <div class="db-field">files_changed</div>
+              <div class="db-field">loop_count</div>
+              <div style="font-size:10px;color:#c0c4cc;margin-top:6px;">Phase2 Agent 决策链路</div>
+            </div>
+            <div class="db-card">
+              <div class="db-name"><span class="tag tag-red">daily_summaries</span></div>
+              <div class="db-field">id <span class="field-key">PK</span></div>
+              <div class="db-field">user_id</div>
+              <div class="db-field">summary_date</div>
+              <div class="db-field">session_count</div>
+              <div class="db-field">total_tokens</div>
+              <div class="db-field">tool_usage_json</div>
+              <div style="font-size:10px;color:#c0c4cc;margin-top:6px;">预聚合，加速看板查询</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 两阶段演进 -->
+        <div class="arch-section">
+          <h3>两阶段演进 — 从"人用工具"到"Agent 自主执行"</h3>
+          <table class="arch-table">
+            <thead>
+              <tr>
+                <th style="width:120px;">维度</th>
+                <th>第一阶段（人用工具）</th>
+                <th>第二阶段（Agent 自主执行）</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>采集对象</b></td>
+                <td>开发者的使用行为</td>
+                <td>Agent 的决策链路</td>
+              </tr>
+              <tr>
+                <td><b>粒度</b></td>
+                <td>一次会话 = 一条 session 记录</td>
+                <td>一次任务 = 一条 trace，含多个 step</td>
+              </tr>
+              <tr>
+                <td><b>数据密度</b></td>
+                <td><span class="tag tag-green">低</span> 每天每人几十条事件</td>
+                <td><span class="tag tag-red">高</span> 每个 Task 可能几十个 Step</td>
+              </tr>
+              <tr>
+                <td><b>核心字段</b></td>
+                <td>用户、时长、Token、工具类型</td>
+                <td>任务类型、步骤序列、输入输出摘要、协作关系</td>
+              </tr>
+              <tr>
+                <td><b>核心表</b></td>
+                <td><span class="tag tag-green">sessions</span></td>
+                <td><span class="tag tag-purple">agent_traces</span></td>
+              </tr>
+              <tr>
+                <td><b>度量重点</b></td>
+                <td>渗透率、使用深度、成本</td>
+                <td>通过率、修正循环、任务质量</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 关键设计决策 -->
+        <div class="arch-section">
+          <h3>关键设计决策</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div style="background:#fafbfc;border-radius:6px;padding:16px;border-left:4px solid #409eff;">
+              <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">为什么"本地缓冲 + 定时上报"？</div>
+              <div style="font-size:12px;color:#606266;line-height:1.8;">
+                · 开发者网络环境不可控（VPN/代理/断连）<br/>
+                · 实时上报会卡住 Claude Code 或丢数据<br/>
+                · 本地缓冲保证：网络好正常上报，差时暂存<br/>
+                · Cron 5 分钟一次，只删已确认成功的日志
+              </div>
+            </div>
+            <div style="background:#fafbfc;border-radius:6px;padding:16px;border-left:4px solid #67c23a;">
+              <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">为什么"MySQL 一台搞定"？</div>
+              <div style="font-size:12px;color:#606266;line-height:1.8;">
+                · 50 人以下团队，日处理上千次会话无压力<br/>
+                · 架构简单：Spring Boot + MySQL<br/>
+                · 预聚合表（daily_summaries）加速看板查询<br/>
+                · 先跑起来，规模大了再拆分存储
+              </div>
+            </div>
+            <div style="background:#fafbfc;border-radius:6px;padding:16px;border-left:4px solid #e6a23c;">
+              <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">为什么"三个 Hook 而非一个"？</div>
+              <div style="font-size:12px;color:#606266;line-height:1.8;">
+                · SessionStart：知道"谁在用"（用户 + 项目）<br/>
+                · PreToolUse：知道"用了什么、用得多深"（能力调用）<br/>
+                · Stop：知道"用了多久、花了多少"（成本 + 效率）<br/>
+                · 三个协同 = 完整的使用画像
+              </div>
+            </div>
+            <div style="background:#fafbfc;border-radius:6px;padding:16px;border-left:4px solid #f56c6c;">
+              <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">为什么"对开发者透明"？</div>
+              <div style="font-size:12px;color:#606266;line-height:1.8;">
+                · Hooks 在后台自动执行，不弹窗不提示<br/>
+                · 本地写文件 + 定时上报，零感知<br/>
+                · 降低使用门槛 = 提高数据完整度<br/>
+                · 度量体系不能变成开发者的负担
+              </div>
+            </div>
+            <div style="background:#fafbfc;border-radius:6px;padding:16px;border-left:4px solid #9b59b6;">
+              <div style="font-size:13px;font-weight:600;color:#303133;margin-bottom:8px;">为什么不用 Fluentd / Filebeat？</div>
+              <div style="font-size:12px;color:#606266;line-height:1.8;">
+                · 需要在每台开发者机器安装额外常驻服务<br/>
+                · 企业环境要过 IT 审批和安全合规审查<br/>
+                · 需处理 Mac/Windows/Linux 多平台兼容<br/>
+                · 50 人以下团队，Cron 脚本就够用<br/>
+                · 规模超 100 人或 IT 管理成熟后再迁移
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      );
+    </script>
+  </body>
+</html>

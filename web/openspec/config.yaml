@@ -1,0 +1,19 @@
+project:
+  name: "harness-web"
+  description: ""
+  tech_stack: []
+  coding_style:
+    conventions: []
+
+rules:
+  design:
+    - 强制前置步骤：做创建任何 design 之前，必须先执行 harness-code-map 技能完成数据流追踪分析
+  propose:
+    - 追踪结果必须反映到 proposal.md 的"改动范围"和 design.md 的"数据流变更"部分
+    - proposal 拆解后必须经人工审计
+    - tasks.md 控制在 15 项以内
+    - tasks.md 中的每个任务必须能在 code-map 追踪报告中找到对应的改动点
+  apply:
+    - 只做 tasks.md 范围内的事
+    - 不允许自行扩展需求
+    - 每完成一个里程碑就跑检查

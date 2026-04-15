@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Trace 详情 - Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js"></script>
+  </head>
+  <body>
+    <script src="/assets/common.js"></script>
+    <script>
+      // 从 URL 参数获取 traceId
+      const params = new URLSearchParams(window.location.search);
+      const traceId = params.get("traceId");
+
+      renderPage(
+        "Agent Trace 详情",
+        "agent",
+        `
+            <div id="basicInfo" style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;"></div>
+            <div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+                <h3 style="margin:0 0 15px;font-size:15px;">执行链路</h3>
+                <div id="steps"></div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:20px;">
+                <h3 style="margin:0 0 15px;font-size:15px;">能力调用</h3>
+                <div id="capabilities"></div>
+            </div>
+        `,
+      );
+
+      async function loadData() {
+        if (!traceId) {
+          document.getElementById("basicInfo").innerHTML =
+            '<div style="color:#f56c6c;">缺少 traceId 参数</div>';
+          return;
+        }
+
+        try {
+          const res = await http.get(`/agent/trace/${traceId}`);
+          const data = res.data.data || res.data;
+          renderBasicInfo(data);
+          renderSteps(data.steps || []);
+          renderCapabilities(data.capabilityUsages || []);
+        } catch (e) {
+          document.getElementById("basicInfo").innerHTML =
+            `<div style="color:#f56c6c;">加载失败：${e.message}</div>`;
+        }
+      }
+
+      function renderBasicInfo(d) {
+        const statusColor =
+          {
+            completed: "#67c23a",
+            running: "#409eff",
+            failed: "#f56c6c",
+            timeout: "#e6a23c",
+          }[d.status] || "#909399";
+        document.getElementById("basicInfo").innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+                    <div><span style="color:#909399;font-size:13px;">Trace ID</span><div style="margin-top:4px;">${d.traceId || "-"}</div></div>
+                    <div><span style="color:#909399;font-size:13px;">Agent 类型</span><div style="margin-top:4px;">${d.agentType || "-"}</div></div>
+                    <div><span style="color:#909399;font-size:13px;">任务类型</span><div style="margin-top:4px;">${d.taskType || "-"}</div></div>
+                    <div><span style="color:#909399;font-size:13px;">状态</span><div style="margin-top:4px;"><span style="color:${statusColor};font-weight:bold;">${d.status || "-"}</span></div></div>
+                    <div><span style="color:#909399;font-size:13px;">Token 消耗</span><div style="margin-top:4px;">${formatNumber(d.totalTokens)}</div></div>
+                    <div><span style="color:#909399;font-size:13px;">耗时</span><div style="margin-top:4px;">${d.totalDurationMs ? (d.totalDurationMs / 1000).toFixed(1) + "s" : "-"}</div></div>
+                    <div><span style="color:#909399;font-size:13px;">变更文件</span><div style="margin-top:4px;">${formatNumber(d.filesChanged)}</div></div>
+                    <div><span style="color:#909399;font-size:13px;">循环次数</span><div style="margin-top:4px;">${formatNumber(d.loopCount)}</div></div>
+                </div>
+                ${d.taskDesc ? `<div style="margin-top:16px;padding-top:16px;border-top:1px solid #ebeef5;"><span style="color:#909399;font-size:13px;">任务描述</span><div style="margin-top:4px;">${d.taskDesc}</div></div>` : ""}
+            `;
+      }
+
+      function renderSteps(steps) {
+        const container = document.getElementById("steps");
+        if (steps.length === 0) {
+          container.innerHTML =
+            '<div style="color:#c0c4cc;">暂无链路数据</div>';
+          return;
+        }
+
+        container.innerHTML = steps
+          .map((step, i) => {
+            const colors = {
+              session_start: "#409eff",
+              tool_use: "#67c23a",
+              capability_use: "#e6a23c",
+              session_stop: "#909399",
+            };
+            const color = colors[step.eventType] || "#409eff";
+            return `
+                    <div style="display:flex;align-items:flex-start;margin-bottom:0;">
+                        <div style="display:flex;flex-direction:column;align-items:center;margin-right:16px;">
+                            <div style="width:12px;height:12px;border-radius:50%;background:${color};"></div>
+                            ${i < steps.length - 1 ? '<div style="width:2px;height:40px;background:#dcdfe6;"></div>' : ""}
+                        </div>
+                        <div style="padding-bottom:20px;">
+                            <div style="font-size:13px;font-weight:bold;color:#303133;">${step.eventType}</div>
+                            <div style="font-size:12px;color:#909399;">
+                                ${step.toolName ? "工具: " + step.toolName : ""}
+                                ${step.capabilityName ? "能力: " + step.capabilityName : ""}
+                                ${step.timestamp ? " | " + step.timestamp : ""}
+                            </div>
+                        </div>
+                    </div>
+                `;
+          })
+          .join("");
+      }
+
+      function renderCapabilities(data) {
+        const container = document.getElementById("capabilities");
+        if (!data || data.length === 0) {
+          container.innerHTML =
+            '<div style="color:#c0c4cc;">暂无能力调用数据</div>';
+          return;
+        }
+        container.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr style="background:#f5f7fa;"><th style="padding:8px;text-align:left;">类型</th><th style="padding:8px;">名称</th><th style="padding:8px;">调用次数</th></tr></thead>
+                <tbody>${data
+                  .map(
+                    (d) => `
+                    <tr style="border-bottom:1px solid #ebeef5;">
+                        <td style="padding:8px;">${d.type || d.capabilityType || "-"}</td>
+                        <td style="padding:8px;text-align:center;">${d.name || d.capabilityName || "-"}</td>
+                        <td style="padding:8px;text-align:center;">${formatNumber(d.count)}</td>
+                    </tr>
+                `,
+                  )
+                  .join("")}</tbody>
+            </table>`;
+      }
+
+      loadData();
+    </script>
+  </body>
+</html>

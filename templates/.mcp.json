@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "mysql-trade": {
+      "command": "npx",
+      "type": "stdio",
+      "args": [
+        "@benborla29/mcp-server-mysql"
+      ],
+      "env" : {
+        "MYSQL_HOST": "xxx.com",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "mall_wr",
+        "MYSQL_PASS": "mall_pwd",
+        "MYSQL_DB": "order",
+        "ALLOW_INSERT_OPERATION": "false",
+        "ALLOW_UPDATE_OPERATION": "false",
+        "ALLOW_DELETE_OPERATION": "false"
+      }
+    },
+    "mysql-order": {
+      "command": "npx",
+      "type": "stdio",
+      "args": [
+        "@benborla29/mcp-server-mysql"
+      ],
+      "env" : {
+        "MYSQL_HOST": "xxx.com",
+        "MYSQL_PORT": "3306",
+        "MYSQL_USER": "item_wr",
+        "MYSQL_PASS": "123",
+        "MYSQL_DB": "item",
+        "ALLOW_INSERT_OPERATION": "false",
+        "ALLOW_UPDATE_OPERATION": "false",
+        "ALLOW_DELETE_OPERATION": "false"
+      }
+    },
+    "redis-trade": {
+      "command": "npx",
+      "type": "stdio",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-redis",
+        "redis://{pass}:{user}@{xxx.com}:{port}"
+      ]
+    }
+  }
+}

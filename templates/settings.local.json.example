@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn test)",
+      "Bash(mvn -q -DskipTests compile)",
+      "Bash(mvn -DskipTests package)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git log*)"
+    ],
+    "deny": [
+      "Bash(git push*)",
+      "Bash(kubectl*)",
+      "Bash(terraform*)",
+      "Bash(helm*)",
+      "Bash(rm -rf*)"
+    ]
+  }
+}

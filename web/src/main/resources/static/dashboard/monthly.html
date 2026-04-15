@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>月报看板 - Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.8/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  </head>
+  <body>
+    <script src="/assets/common.js"></script>
+    <script src="/assets/charts.js"></script>
+    <script>
+      // 默认：2026-04-12 所在月份
+      function getMonthRange(dateStr) {
+        const d = new Date(dateStr);
+        const year = d.getFullYear();
+        const month = d.getMonth(); // 0-based
+        const start = new Date(year, month, 1);
+        const end = new Date(year, month + 1, 0); // 当月最后一天
+        return {
+          start: start.toISOString().slice(0, 10),
+          end: end.toISOString().slice(0, 10),
+        };
+      }
+
+      const DEFAULT_MONTH = getMonthRange("2026-04-12");
+
+      renderPage(
+        "月报看板",
+        "monthly",
+        `
+            <!-- 月份选择器 -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:#fff;border-radius:8px;padding:12px 20px;">
+                <label style="font-size:13px;color:#606266;font-weight:500;">月份</label>
+                <input type="month" id="monthPicker" value="2026-04"
+                       style="padding:6px 12px;border:1px solid #dcdfe6;border-radius:4px;font-size:14px;color:#303133;" />
+                <button onclick="loadData()"
+                        style="padding:6px 20px;background:#409eff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">查询</button>
+                <button onclick="prevMonth()"
+                        style="padding:6px 12px;background:#fff;color:#606266;border:1px solid #dcdfe6;border-radius:4px;cursor:pointer;font-size:13px;">上一月</button>
+                <button onclick="nextMonth()"
+                        style="padding:6px 12px;background:#fff;color:#606266;border:1px solid #dcdfe6;border-radius:4px;cursor:pointer;font-size:13px;">下一月</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+                <div id="coverageCard" style="background:#fff;border-radius:8px;padding:20px;"></div>
+                <div id="costCard" style="background:#fff;border-radius:8px;padding:20px;"></div>
+                <div id="tokenCard" style="background:#fff;border-radius:8px;padding:20px;"></div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;">
+                <h3 style="margin:0 0 10px;font-size:15px;">项目×用户热度矩阵</h3>
+                <div id="matrix" style="height:400px;"></div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:20px;">
+                <h3 style="margin:0 0 10px;font-size:15px;">推广建议</h3>
+                <ul id="suggestions" style="color:#606266;font-size:14px;line-height:2;"></ul>
+            </div>
+        `,
+      );
+
+      function prevMonth() {
+        const mp = document.getElementById("monthPicker");
+        const [y, m] = mp.value.split("-").map(Number);
+        const d = new Date(y, m - 2, 1); // 上月
+        mp.value = d.toISOString().slice(0, 7);
+        loadData();
+      }
+
+      function nextMonth() {
+        const mp = document.getElementById("monthPicker");
+        const [y, m] = mp.value.split("-").map(Number);
+        const d = new Date(y, m, 1); // 下月
+        mp.value = d.toISOString().slice(0, 7);
+        loadData();
+      }
+
+      function getMonthParams() {
+        const val = document.getElementById("monthPicker").value; // "2026-04"
+        const [y, m] = val.split("-").map(Number);
+        const start = new Date(y, m - 1, 1).toISOString().slice(0, 10);
+        const end = new Date(y, m, 0).toISOString().slice(0, 10);
+        return { start, end };
+      }
+
+      async function loadData() {
+        try {
+          const { start, end } = getMonthParams();
+          const res = await http.get(
+            "/monthly?startDate=" + start + "&endDate=" + end,
+          );
+          const data = res.data.data || res.data;
+          renderCoverage(data.coverageRate);
+          renderCost(data.tokenCost || {});
+          renderToken(data.tokenCost || {});
+          renderMatrix(data.projectUserMatrix || []);
+          renderSuggestions(data.suggestions || []);
+        } catch (e) {
+          console.error("加载月报数据失败", e);
+        }
+      }
+
+      function renderCoverage(rate) {
+        const pct = rate ? Number(rate).toFixed(1) : "0.0";
+        document.getElementById("coverageCard").innerHTML = `
+                <div style="color:#909399;font-size:13px;">安装覆盖率</div>
+                <div style="font-size:36px;font-weight:bold;color:#409eff;margin:10px 0;">${pct}%</div>
+                <div style="background:#ebeef5;height:8px;border-radius:4px;">
+                    <div style="background:#409eff;height:100%;width:${pct}%;border-radius:4px;"></div>
+                </div>
+            `;
+      }
+
+      function renderCost(cost) {
+        document.getElementById("costCard").innerHTML = `
+                <div style="color:#909399;font-size:13px;">Token 成本（元）</div>
+                <div style="font-size:36px;font-weight:bold;color:#e6a23c;margin:10px 0;">${formatNumber(cost.costInYuan)}</div>
+                <div style="color:#909399;font-size:12px;">人均: ${formatNumber(cost.avgPerUser)} tokens / 单会话: ${formatNumber(cost.avgPerSession)} tokens</div>
+            `;
+      }
+
+      function renderToken(cost) {
+        document.getElementById("tokenCard").innerHTML = `
+                <div style="color:#909399;font-size:13px;">总 Token 消耗</div>
+                <div style="font-size:36px;font-weight:bold;color:#67c23a;margin:10px 0;">${formatNumber(cost.totalTokens)}</div>
+            `;
+      }
+
+      function renderMatrix(data) {
+        if (data.length === 0) {
+          document.getElementById("matrix").innerHTML =
+            '<div style="text-align:center;color:#909399;padding:40px;">暂无数据</div>';
+          return;
+        }
+        renderHeatmapChart(
+          "matrix",
+          "",
+          data,
+          "projectName",
+          "userName",
+          "sessionCount",
+        );
+      }
+
+      function renderSuggestions(suggestions) {
+        const ul = document.getElementById("suggestions");
+        if (suggestions.length === 0) {
+          ul.innerHTML = '<li style="color:#c0c4cc;">暂无建议</li>';
+          return;
+        }
+        ul.innerHTML = suggestions.map((s) => `<li>${s}</li>`).join("");
+      }
+
+      loadData();
+    </script>
+  </body>
+</html>

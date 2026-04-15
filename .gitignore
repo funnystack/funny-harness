@@ -1,0 +1,8 @@
+.omc/
+.omx/
+.idea/
+.vscode/
+.remember/
+web/target/
+web/.remember/
+**/settings.local.json

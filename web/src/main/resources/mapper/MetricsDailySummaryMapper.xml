@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.funny.harness.dao.mapper.MetricsDailySummaryMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.funny.harness.dao.entity.MetricsDailySummaryDO">
+        <id column="id" property="id" />
+        <result column="summary_date" property="summaryDate" />
+        <result column="dau" property="dau" />
+        <result column="total_sessions" property="totalSessions" />
+        <result column="total_tokens" property="totalTokens" />
+        <result column="total_duration_seconds" property="totalDurationSeconds" />
+        <result column="active_projects" property="activeProjects" />
+        <result column="agent_tasks_completed" property="agentTasksCompleted" />
+        <result column="agent_tasks_failed" property="agentTasksFailed" />
+        <result column="agent_first_pass_rate" property="agentFirstPassRate" />
+        <result column="avg_tokens_per_task" property="avgTokensPerTask" />
+        <result column="top_skill" property="topSkill" />
+        <result column="top_agent" property="topAgent" />
+        <result column="skill_call_count" property="skillCallCount" />
+        <result column="created_stime" property="createdStime" />
+        <result column="modified_stime" property="modifiedStime" />
+        <result column="is_del" property="isDel" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, summary_date, dau, total_sessions, total_tokens, total_duration_seconds, active_projects, agent_tasks_completed, agent_tasks_failed, agent_first_pass_rate, avg_tokens_per_task, top_skill, top_agent, skill_call_count, created_stime, modified_stime, is_del
+    </sql>
+
+    <!-- 日期范围汇总 -->
+    <select id="sumSummaryByDateRange" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM metrics_daily_summary
+        WHERE summary_date BETWEEN #{startDate} AND #{endDate} AND is_del = 0
+        ORDER BY summary_date
+    </select>
+
+</mapper>
