@@ -246,13 +246,16 @@ install_hooks() {
             reduce ($new_hooks | keys[]) as $event_type (
                 .;
                 # 当前 settings 中该 event type 的已有条目
-                .hooks[$event_type] as $existing |
+                (.hooks[$event_type] // []) as $existing_array |
                 # 新增的条目
                 $new_hooks[$event_type] as $new_entries |
-                # 合并：已有条目 + 新增条目（追加，不覆盖）
-                .hooks[$event_type] = (
-                    ($existing // []) + $new_entries
-                )
+                # 去重：过滤掉已存在的 matcher
+                [ $new_entries[] | select(
+                    .matcher as $m |
+                    ($existing_array | map(.matcher) | index($m) | not)
+                ) ] as $deduped_entries |
+                # 合并：已有条目 + 去重后的新增条目
+                .hooks[$event_type] = ($existing_array + $deduped_entries)
             )
         ' "$global_settings")
 
